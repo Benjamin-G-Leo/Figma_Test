@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Rush</title>
+  <meta name="description" content="A premium futuristic browser game - Survive. Collect. Escape.">
+  <meta name="theme-color" content="#0f0c29">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles/style.css">
+  <script type="module" src="./main.ts"></script>
+</head>
+<body>
+  <!-- Background Canvas Layer -->
+  <div id="bg-container">
+    <canvas id="bg-canvas"></canvas>
+  </div>
+
+  <!-- Game Canvas Layer -->
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <!-- UI Overlay Layer -->
+  <div id="ui-layer">
+    
+    <!-- Main Menu Screen -->
+    <div id="main-menu" class="screen active">
+      <div class="menu-content">
+        <div class="title-wrapper">
+          <h1 class="game-title">NEON RUSH</h1>
+          <p class="subtitle">SURVIVE. COLLECT. ESCAPE.</p>
+        </div>
+        
+        <div class="menu-stats">
+          <div class="stat-card">
+            <span class="stat-label">HIGH SCORE</span>
+            <span class="stat-value" id="menu-high-score">0</span>
+          </div>
+        </div>
+        
+        <button id="start-btn" class="btn btn-primary btn-glow">
+          START GAME
+        </button>
+        
+        <div class="controls-info">
+          <div class="controls-group">
+            <span class="ctrl-key">WASD / Arrow Keys</span>
+            <span class="ctrl-label">Move</span>
+          </div>
+          <div class="controls-group">
+            <span class="ctrl-key">SPACE</span>
+            <span class="ctrl-label">Pause</span>
+          </div>
+          <div class="controls-group">
+            <span class="ctrl-key">TOUCH</span>
+            <span class="ctrl-label">Mobile</span>
+          </div>
+        </div>
+        
+        <div class="instructions">
+          <p>Collect energy orbs to increase score</p>
+          <p>Avoid obstacles to survive</p>
+          <p>Build combo for multipliers</p>
+        </div>
+        
+        <button id="sound-toggle" class="btn btn-icon">
+          <span class="icon">🔊</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- HUD (Heads Up Display) -->
+    <div id="hud" class="screen">
+      <div class="hud-top">
+        <div class="hud-stat">
+          <div class="hud-label">SCORE</div>
+          <div class="hud-value" id="score-display">0</div>
+        </div>
+        <div class="hud-stat">
+          <div class="hud-label">HIGH SCORE</div>
+          <div class="hud-value" id="hud-high-score">0</div>
+        </div>
+        <div class="hud-stat combo-stat">
+          <div class="hud-label">COMBO</div>
+          <div class="hud-value combo-value" id="combo-display">1x</div>
+        </div>
+        <div class="hud-stat">
+          <div class="hud-label">SPEED</div>
+          <div class="hud-value" id="speed-display">1.0x</div>
+        </div>
+        <div class="hud-stat">
+          <div class="hud-label">TIME</div>
+          <div class="hud-value" id="timer-display">0:00</div>
+        </div>
+      </div>
+      
+      <div class="hud-bottom">
+        <button id="pause-btn" class="btn btn-secondary btn-pause">
+          <span class="icon">⏸</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="overlay-content">
+        <h2 class="overlay-title">GAME PAUSED</h2>
+        <div class="overlay-stats">
+          <div class="overlay-stat">
+            <span>Score</span>
+            <span id="pause-score">0</span>
+          </div>
+        </div>
+        <div class="overlay-actions">
+          <button id="resume-btn" class="btn btn-primary btn-lg">RESUME</button>
+          <button id="restart-from-pause-btn" class="btn btn-secondary btn-lg">RESTART</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="screen hidden">
+      <div class="game-over-effects" aria-hidden="true">
+        <span class="game-over-ring ring-one"></span>
+        <span class="game-over-ring ring-two"></span>
+        <span class="game-over-ring ring-three"></span>
+        <span class="game-over-particle particle-one"></span>
+        <span class="game-over-particle particle-two"></span>
+        <span class="game-over-particle particle-three"></span>
+        <span class="game-over-particle particle-four"></span>
+        <span class="game-over-shard shard-one"></span>
+        <span class="game-over-shard shard-two"></span>
+        <span class="game-over-shard shard-three"></span>
+      </div>
+      <div class="game-over-content">
+        <div class="final-result">
+          <h2 class="game-over-title">GAME OVER</h2>
+          <div id="new-high-score" class="high-score-badge hidden">NEW HIGH SCORE!</div>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">FINAL SCORE</span>
+            <span class="stat-value" id="final-score">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">HIGH SCORE</span>
+            <span class="stat-value" id="game-over-high-score">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">SURVIVAL TIME</span>
+            <span class="stat-value" id="survival-time">0:00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">MAX COMBO</span>
+            <span class="stat-value" id="max-combo">1x</span>
+          </div>
+        </div>
+        
+        <div class="game-over-actions">
+          <button id="play-again-btn" class="btn btn-primary btn-lg btn-glow">PLAY AGAIN</button>
+          <button id="main-menu-btn" class="btn btn-secondary btn-lg">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
