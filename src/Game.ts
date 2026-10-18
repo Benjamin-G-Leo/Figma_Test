@@ -32,6 +32,7 @@ export class Game {
   private orbTimer: number = 0;
   private lastTime: number = 0;
   private animationFrame: number | null = null;
+  private loopGeneration: number = 0;
   private keys: Record<string, boolean> = {};
   private readonly maxObstacles = 24;
   private readonly maxOrbs = 5;
@@ -143,6 +144,7 @@ export class Game {
 
   start(): void {
     void this.audioManager.initialize();
+    this.stopLoop();
     this.state = 'playing';
     document.getElementById('game-over')?.classList.add('hidden');
     document.getElementById('game-over')?.classList.remove('show');
@@ -155,10 +157,7 @@ export class Game {
   pause(): void {
     if (this.state === 'playing') {
       this.state = 'paused';
-      if (this.animationFrame !== null) {
-        cancelAnimationFrame(this.animationFrame);
-        this.animationFrame = null;
-      }
+      this.stopLoop();
     }
   }
 
@@ -172,6 +171,7 @@ export class Game {
 
   restart(): void {
     void this.audioManager.initialize();
+    this.stopLoop();
     this.resetGame();
     this.state = 'playing';
     this.lastTime = performance.now();
@@ -462,13 +462,23 @@ export class Game {
     if (maxComboEl) maxComboEl.textContent = `${this.stats.maxCombo}x`;
   }
 
-  private loop(): void {
-    if (this.state !== 'playing') return;
-    
+  private loop(generation: number = this.loopGeneration): void {
+    if (this.state !== 'playing' || generation !== this.loopGeneration) return;
+
     this.update();
     this.render();
-    
-    this.animationFrame = requestAnimationFrame(() => this.loop());
+
+    if (this.state === 'playing' && generation === this.loopGeneration) {
+      this.animationFrame = requestAnimationFrame(() => this.loop(generation));
+    }
+  }
+
+  private stopLoop(): void {
+    this.loopGeneration++;
+    if (this.animationFrame !== null) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
   }
 
   private render(): void {
@@ -487,10 +497,7 @@ export class Game {
   }
 
   cleanup(): void {
-    if (this.animationFrame !== null) {
-      cancelAnimationFrame(this.animationFrame);
-      this.animationFrame = null;
-    }
+    this.stopLoop();
     
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
