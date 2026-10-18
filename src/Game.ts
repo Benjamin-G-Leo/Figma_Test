@@ -65,12 +65,14 @@ export class Game {
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
     this.handleResize = this.handleResize.bind(this);
+    this.handlePointerDown = this.handlePointerDown.bind(this);
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerUp = this.handlePointerUp.bind(this);
 
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('resize', this.handleResize);
+    this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.canvas.addEventListener('pointermove', this.handlePointerMove);
     this.canvas.addEventListener('pointerup', this.handlePointerUp);
     this.canvas.addEventListener('pointercancel', this.handlePointerUp);
@@ -103,16 +105,31 @@ export class Game {
     this.keys[e.code] = false;
   }
 
+  private handlePointerDown(e: PointerEvent): void {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    this.canvas.setPointerCapture(e.pointerId);
+    this.updateTouchTarget(e);
+  }
+
   private handlePointerMove(e: PointerEvent): void {
     if (e.pointerType === 'mouse' && e.buttons === 0) return;
 
+    this.updateTouchTarget(e);
+  }
+
+  private updateTouchTarget(e: PointerEvent): void {
+    const canvasBounds = this.canvas.getBoundingClientRect();
     this.touchTarget = {
-      x: e.clientX,
-      y: e.clientY
+      x: (e.clientX - canvasBounds.left) * (this.canvas.width / canvasBounds.width),
+      y: (e.clientY - canvasBounds.top) * (this.canvas.height / canvasBounds.height)
     };
   }
 
-  private handlePointerUp(): void {
+  private handlePointerUp(e: PointerEvent): void {
+    if (this.canvas.hasPointerCapture(e.pointerId)) {
+      this.canvas.releasePointerCapture(e.pointerId);
+    }
     this.touchTarget = null;
   }
 
@@ -478,6 +495,7 @@ export class Game {
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
     window.removeEventListener('resize', this.handleResize);
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvas.removeEventListener('pointermove', this.handlePointerMove);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
     this.canvas.removeEventListener('pointercancel', this.handlePointerUp);
