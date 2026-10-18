@@ -1,5 +1,5 @@
 /* =====================
-   NEON RUSH - CSS STYLES
+   VOLT RUNNER - CSS STYLES
    Premium cyberpunk futuristic design
    ===================== */
 
@@ -608,13 +608,15 @@ html, body {
 
 .game-over-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-size: clamp(1.8rem, 8vw, 4rem);
   font-weight: 900;
   color: #ff00ff;
   text-shadow: 0 0 30px rgba(255, 0, 255, 0.4),
                0 0 50px rgba(0, 255, 255, 0.4),
                0 0 70px rgba(255, 0, 255, 0.3);
-  letter-spacing: 0.3em;
+  letter-spacing: clamp(0.12em, 1.8vw, 0.3em);
+  max-width: 100%;
+  white-space: nowrap;
   animation: gameOverGlow 2s ease-in-out infinite;
 }
 

@@ -1,7 +1,7 @@
 {
-  "name": "neon-rush",
+  "name": "volt-runner",
   "version": "1.0.0",
-  "description": "Neon Rush - A premium futuristic browser game",
+  "description": "Volt Runner - A premium futuristic browser game",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -17,6 +17,7 @@ class NeonRush {
   private game: Game | null = null;
   private bgRenderer: BackgroundRenderer;
   private isAnimating: boolean = false;
+  private lastBackgroundFrame = 0;
 
   constructor() {
     this.bgRenderer = new BackgroundRenderer();
@@ -63,17 +64,17 @@ class NeonRush {
       const icon = soundToggle.querySelector('.icon') as HTMLElement;
       if (!icon) return;
 
-      const audioEnabled = localStorage.getItem('neonRushAudio') !== 'false';
+      const audioEnabled = localStorage.getItem('voltRunnerAudio') !== 'false';
       if (audioEnabled) {
         icon.textContent = '🔇';
       } else {
         icon.textContent = '🔊';
       }
       const nextAudioEnabled = !audioEnabled;
-      localStorage.setItem('neonRushAudio', nextAudioEnabled ? 'true' : 'false');
+      localStorage.setItem('voltRunnerAudio', nextAudioEnabled ? 'true' : 'false');
       this.game?.setAudioEnabled(nextAudioEnabled);
     });
-    const audioEnabled = localStorage.getItem('neonRushAudio') !== 'false';
+    const audioEnabled = localStorage.getItem('voltRunnerAudio') !== 'false';
     const soundIcon = soundToggle?.querySelector('.icon');
     if (soundIcon) soundIcon.textContent = audioEnabled ? '🔊' : '🔇';
 
@@ -192,7 +193,7 @@ class NeonRush {
   }
 
   private updateMenuHighScore(): void {
-    const saved = localStorage.getItem('neonRushHighScore');
+    const saved = localStorage.getItem('voltRunnerHighScore') ?? localStorage.getItem('neonRushHighScore');
     const menuHighScore = document.getElementById('menu-high-score');
     if (saved && menuHighScore) {
       menuHighScore.textContent = saved;
@@ -209,13 +210,16 @@ class NeonRush {
     this.bgRenderer.render();
     this.isAnimating = true;
     
-    const animate = () => {
-      this.bgRenderer.update();
-      this.bgRenderer.render();
+    const animate = (timestamp: number) => {
+      if (timestamp - this.lastBackgroundFrame >= 33) {
+        this.bgRenderer.update();
+        this.bgRenderer.render();
+        this.lastBackgroundFrame = timestamp;
+      }
       requestAnimationFrame(animate);
     };
     
-    animate();
+    requestAnimationFrame(animate);
   }
 }
 

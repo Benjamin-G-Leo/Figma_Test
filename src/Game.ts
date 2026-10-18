@@ -49,7 +49,7 @@ export class Game {
     this.particleSystem = new ParticleSystem();
     this.audioManager = new AudioManager({
       volume: 0.18,
-      enabled: localStorage.getItem('neonRushAudio') !== 'false'
+      enabled: localStorage.getItem('voltRunnerAudio') !== 'false'
     });
 
     this.scoreElement = document.getElementById('score-display')!;
@@ -399,7 +399,7 @@ export class Game {
   }
 
   private loadHighScore(): void {
-    const saved = localStorage.getItem('neonRushHighScore');
+    const saved = localStorage.getItem('voltRunnerHighScore') ?? localStorage.getItem('neonRushHighScore');
     if (saved) {
       this.stats.highScore = parseInt(saved, 10);
     }
@@ -409,7 +409,7 @@ export class Game {
   private updateHighScore(): void {
     if (this.stats.score > this.stats.highScore) {
       this.stats.highScore = this.stats.score;
-      localStorage.setItem('neonRushHighScore', this.stats.highScore.toString());
+      localStorage.setItem('voltRunnerHighScore', this.stats.highScore.toString());
       this.highScoreElement.textContent = this.stats.highScore.toString();
       
       const badge = document.getElementById('new-high-score');
