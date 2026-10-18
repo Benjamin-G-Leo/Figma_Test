@@ -33,6 +33,8 @@ export class Game {
   private lastTime: number = 0;
   private animationFrame: number | null = null;
   private keys: Record<string, boolean> = {};
+  private readonly maxObstacles = 24;
+  private readonly maxOrbs = 5;
 
   private scoreElement: HTMLElement;
   private highScoreElement: HTMLElement;
@@ -136,6 +138,10 @@ export class Game {
   pause(): void {
     if (this.state === 'playing') {
       this.state = 'paused';
+      if (this.animationFrame !== null) {
+        cancelAnimationFrame(this.animationFrame);
+        this.animationFrame = null;
+      }
     }
   }
 
@@ -198,7 +204,7 @@ export class Game {
     this.lastTime = now;
     
     this.handleInput(deltaTime);
-    this.player.update();
+    this.player.update(deltaTime);
     this.stats.survivalTime += deltaTime / 60;
     this.updateSpeed();
     this.updateObstacles(deltaTime);
@@ -206,7 +212,7 @@ export class Game {
     this.spawnObstacles(deltaTime);
     this.spawnOrbs(deltaTime);
     this.checkCollisions();
-    this.particleSystem.update();
+    this.particleSystem.update(deltaTime);
     this.updateUI();
   }
 
@@ -243,18 +249,20 @@ export class Game {
   }
 
   private updateSpeed(): void {
-    const speedIncrease = Math.floor(this.stats.score / 10) * 0.05;
-    this.stats.speed = 1.0 + speedIncrease;
+    const scoreSpeedIncrease = Math.floor(this.stats.score / 10) * 0.05;
+    const survivalSpeedIncrease = Math.floor(this.stats.survivalTime / 10) * 0.1;
+    this.stats.speed = Math.min(3, 1.0 + scoreSpeedIncrease + survivalSpeedIncrease);
     this.speedElement.textContent = `${this.stats.speed.toFixed(1)}x`;
   }
 
   private updateObstacles(deltaTime: number): void {
     this.obstacles.forEach(obstacle => {
-      obstacle.update(this.stats.speed);
+      obstacle.update(this.stats.speed, deltaTime);
       obstacle.checkBounds(this.config.gameWidth, this.config.gameHeight);
     });
     
     this.obstacles = this.obstacles.filter(obstacle => 
+      obstacle.isActive &&
       obstacle.x > -50 && obstacle.x < this.config.gameWidth + 50 &&
       obstacle.y > -50 && obstacle.y < this.config.gameHeight + 50
     );
@@ -262,7 +270,7 @@ export class Game {
 
   private updateOrbs(deltaTime: number): void {
     this.orbs.forEach(orb => {
-      orb.update(this.stats.speed * 0.5);
+      orb.update(this.stats.speed * 0.5, deltaTime);
       orb.checkBounds(this.config.gameWidth, this.config.gameHeight);
     });
     
@@ -271,7 +279,7 @@ export class Game {
 
   private spawnObstacles(deltaTime: number): void {
     this.obstacleTimer -= deltaTime;
-    if (this.obstacleTimer <= 0) {
+    if (this.obstacleTimer <= 0 && this.obstacles.length < this.maxObstacles) {
       const spawnInterval = Math.max(
         this.config.obstacleSpawnInterval - (this.stats.score * 0.1),
         30
@@ -322,7 +330,7 @@ export class Game {
 
   private spawnOrbs(deltaTime: number): void {
     this.orbTimer -= deltaTime;
-    if (this.orbTimer <= 0) {
+    if (this.orbTimer <= 0 && this.orbs.length < this.maxOrbs) {
       const spawnInterval = Math.max(
         180 - (this.stats.score * 0.5),
         60
@@ -462,8 +470,9 @@ export class Game {
   }
 
   cleanup(): void {
-    if (this.animationFrame) {
+    if (this.animationFrame !== null) {
       cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
     }
     
     window.removeEventListener('keydown', this.handleKeyDown);

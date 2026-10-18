@@ -26,31 +26,34 @@ export class Player {
     this.baseSpeed = speed;
   }
 
-  update(): void {
+  update(deltaTime: number = 1): void {
+    const frameScale = Math.min(deltaTime, 2);
+
     // Smooth movement with lerp
-    this.vx *= 0.85;
-    this.vy *= 0.85;
+    const friction = Math.pow(0.85, frameScale);
+    this.vx *= friction;
+    this.vy *= friction;
     
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * frameScale;
+    this.y += this.vy * frameScale;
 
     // Update trail
     this.trail.push({ x: this.x, y: this.y, life: 1 });
     if (this.trail.length > this.maxTrail) {
       this.trail.shift();
     }
-    this.trail.forEach(t => t.life -= 0.05);
+    this.trail.forEach(t => t.life -= 0.05 * frameScale);
 
     // Update invincibility
     if (this.invincible) {
-      this.invincibilityTimer--;
+      this.invincibilityTimer -= frameScale;
       if (this.invincibilityTimer <= 0) {
         this.invincible = false;
       }
     }
 
     // Update pulse
-    this.pulsePhase += 0.1;
+    this.pulsePhase += 0.1 * frameScale;
     this.glowIntensity = 0.7 + Math.sin(this.pulsePhase) * 0.3;
   }
 

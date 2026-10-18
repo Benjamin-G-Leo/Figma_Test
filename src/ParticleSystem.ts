@@ -55,15 +55,17 @@ export class ParticleSystem {
     });
   }
 
-  update(): void {
+  update(deltaTime: number = 1): void {
+    const frameScale = Math.min(deltaTime, 2);
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life--;
-      p.size *= 0.9;
-      p.vx *= 0.92;
-      p.vy *= 0.92;
+      p.x += p.vx * frameScale;
+      p.y += p.vy * frameScale;
+      p.life -= frameScale;
+      p.size *= Math.pow(0.9, frameScale);
+      p.vx *= Math.pow(0.92, frameScale);
+      p.vy *= Math.pow(0.92, frameScale);
 
       if (p.life <= 0 || p.size < 0.1) {
         this.particles.splice(i, 1);

@@ -12,6 +12,7 @@ export class Obstacle {
   color: string;
   type: 'square' | 'triangle' | 'diamond' | 'hexagon';
   isActive: boolean = true;
+  lifetime = 12;
 
   constructor(x: number, y: number, speed: number, type: 'square' | 'triangle' | 'diamond' | 'hexagon', color: string = '#ff00ff') {
     this.x = x;
@@ -26,11 +27,14 @@ export class Obstacle {
     this.pulsePhase = Math.random() * Math.PI * 2;
   }
 
-  update(speedMultiplier: number = 1): void {
-    this.x += this.vx * speedMultiplier;
-    this.y += this.vy * speedMultiplier;
-    this.rotation += 0.02 * speedMultiplier;
-    this.pulsePhase += 0.05 * speedMultiplier;
+  update(speedMultiplier: number = 1, deltaTime: number = 1): void {
+    const frameScale = Math.min(deltaTime, 2);
+    this.x += this.vx * speedMultiplier * frameScale;
+    this.y += this.vy * speedMultiplier * frameScale;
+    this.rotation += 0.02 * speedMultiplier * frameScale;
+    this.pulsePhase += 0.05 * speedMultiplier * frameScale;
+    this.lifetime -= frameScale / 60;
+    if (this.lifetime <= 0) this.isActive = false;
   }
 
   checkBounds(width: number, height: number): void {
@@ -121,6 +125,7 @@ export class Obstacle {
     this.vy = (Math.random() - 0.5) * speed;
     this.type = type;
     this.isActive = true;
+    this.lifetime = 12;
     this.rotation = 0;
     this.pulsePhase = Math.random() * Math.PI * 2;
   }

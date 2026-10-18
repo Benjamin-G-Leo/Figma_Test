@@ -112,6 +112,7 @@ class NeonRush {
     }
     
     // Start game
+    this.bgRenderer.resume();
     this.game.start();
     this.updateMenuHighScore();
   }
@@ -121,6 +122,7 @@ class NeonRush {
       if (this.game.getState() === 'playing') {
         this.showPauseOverlay();
         this.game.pause();
+        this.bgRenderer.pause();
       }
     }
   }
@@ -129,21 +131,25 @@ class NeonRush {
     this.hidePauseOverlay();
     if (this.game) {
       this.game.resume();
+      this.bgRenderer.resume();
     }
   }
 
   private togglePause(): void {
     if (this.game?.getState() === 'playing') {
       this.game.pause();
+      this.bgRenderer.pause();
       this.showPauseOverlay();
     } else if (this.game?.getState() === 'paused') {
       this.game.resume();
+      this.bgRenderer.resume();
       this.hidePauseOverlay();
     }
   }
 
   private restartGame(): void {
     this.hidePauseOverlay();
+    this.bgRenderer.resume();
     const finalMenu = document.getElementById('game-over');
     finalMenu?.classList.add('hidden');
     finalMenu?.classList.remove('show');
@@ -160,6 +166,7 @@ class NeonRush {
       this.game.cleanup();
       this.game = null;
     }
+    this.bgRenderer.resume();
     
     // Show menu
     const menu = document.getElementById('main-menu');

@@ -8,6 +8,7 @@ export class BackgroundRenderer {
   private height: number = 0;
   private time: number = 0;
   private gridOffset: number = 0;
+  private isPaused: boolean = false;
 
   constructor() {
     this.canvas = document.getElementById('bg-canvas') as HTMLCanvasElement;
@@ -51,6 +52,8 @@ export class BackgroundRenderer {
   }
 
   update(): void {
+    if (this.isPaused) return;
+
     this.time += 0.005;
     this.gridOffset += 0.2;
     
@@ -123,5 +126,13 @@ export class BackgroundRenderer {
 
   getCanvas(): HTMLCanvasElement {
     return this.canvas;
+  }
+
+  pause(): void {
+    this.isPaused = true;
+  }
+
+  resume(): void {
+    this.isPaused = false;
   }
 }

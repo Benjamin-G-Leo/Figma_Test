@@ -19,11 +19,13 @@ Volt Runner is a fast-paced futuristic arcade game built for modern desktop and 
   - Increasing speed
   - More frequent obstacle spawns
   - Visible speed multiplier
+- Bounded moving-object populations with short lifetimes to maintain performance
 - Collision effects with:
   - Particle bursts
   - Screen shake
   - Game-over transition
 - Pause and resume support
+- Pausing freezes gameplay, particles, obstacles, and background motion
 - Play Again and Main Menu actions
 - Persistent high score using `localStorage`
 - Sound toggle with persisted preference
@@ -158,4 +160,3 @@ The main browser flows have also been tested:
 - Sound toggle
 - High-score persistence
 - Responsive canvas sizing
-

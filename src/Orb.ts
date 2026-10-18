@@ -12,6 +12,7 @@ export class Orb {
   color: string = '#ffff00';
   isActive: boolean = true;
   spinSpeed: number;
+  lifetime = 10;
 
   constructor(x: number, y: number) {
     this.x = x;
@@ -25,11 +26,14 @@ export class Orb {
     this.spinSpeed = 0.03;
   }
 
-  update(speedMultiplier: number = 1): void {
-    this.x += this.vx * speedMultiplier;
-    this.y += this.vy * speedMultiplier;
-    this.rotation += this.spinSpeed * speedMultiplier;
-    this.pulsePhase += 0.08 * speedMultiplier;
+  update(speedMultiplier: number = 1, deltaTime: number = 1): void {
+    const frameScale = Math.min(deltaTime, 2);
+    this.x += this.vx * speedMultiplier * frameScale;
+    this.y += this.vy * speedMultiplier * frameScale;
+    this.rotation += this.spinSpeed * speedMultiplier * frameScale;
+    this.pulsePhase += 0.08 * speedMultiplier * frameScale;
+    this.lifetime -= frameScale / 60;
+    if (this.lifetime <= 0) this.isActive = false;
 
     // Wrap around screen edges
     // Keep orb within reasonable bounds
@@ -116,6 +120,7 @@ export class Orb {
     this.vx = (Math.random() - 0.5) * 1.5;
     this.vy = (Math.random() - 0.5) * 1.5;
     this.isActive = true;
+    this.lifetime = 10;
     this.pulsePhase = Math.random() * Math.PI * 2;
   }
 }
