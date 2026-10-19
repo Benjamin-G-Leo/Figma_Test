@@ -86,8 +86,11 @@ class NeonRush {
           const gameScreen = document.getElementById('hud');
           if (gameScreen && !gameScreen.classList.contains('active')) return;
           
-          if (this.game) {
-            if (document.getElementById('main-menu')?.classList.contains('active')) return;
+          if (document.getElementById('main-menu')?.classList.contains('active')) return;
+
+          if (this.game.getState() === 'gameover') {
+            this.restartGame();
+          } else {
             this.togglePause();
           }
         }

@@ -94,12 +94,6 @@ export class Game {
 
   private handleKeyDown(e: KeyboardEvent): void {
     this.keys[e.code] = true;
-
-    if (e.code === 'Space' && this.state === 'paused') {
-      this.resume();
-    } else if (e.code === 'Space' && this.state === 'gameover') {
-      this.restart();
-    }
   }
 
   private handleKeyUp(e: KeyboardEvent): void {
