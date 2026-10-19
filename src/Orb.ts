@@ -14,10 +14,10 @@ export class Orb {
   spinSpeed: number;
   lifetime = 10;
 
-  constructor(x: number, y: number) {
+  constructor(x: number, y: number, radius: number = 12) {
     this.x = x;
     this.y = y;
-    this.radius = 12;
+    this.radius = radius;
     this.vx = (Math.random() - 0.5) * 1.5;
     this.vy = (Math.random() - 0.5) * 1.5;
     this.angle = Math.random() * Math.PI * 2;

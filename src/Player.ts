@@ -16,12 +16,12 @@ export class Player {
   invincibilityTimer: number = 0;
   color: string = '#00ffff';
 
-  constructor(x: number, y: number, speed: number = 6) {
+  constructor(x: number, y: number, speed: number = 6, radius: number = 15) {
     this.x = x;
     this.y = y;
     this.vx = 0;
     this.vy = 0;
-    this.radius = 15;
+    this.radius = radius;
     this.speed = speed;
     this.baseSpeed = speed;
   }

@@ -14,10 +14,17 @@ export class Obstacle {
   isActive: boolean = true;
   lifetime = 12;
 
-  constructor(x: number, y: number, speed: number, type: 'square' | 'triangle' | 'diamond' | 'hexagon', color: string = '#ff00ff') {
+  constructor(
+    x: number,
+    y: number,
+    speed: number,
+    type: 'square' | 'triangle' | 'diamond' | 'hexagon',
+    color: string = '#ff00ff',
+    radius: number = 25
+  ) {
     this.x = x;
     this.y = y;
-    this.radius = 25;
+    this.radius = radius;
     this.vx = (Math.random() - 0.5) * speed;
     this.vy = (Math.random() - 0.5) * speed;
     this.type = type;

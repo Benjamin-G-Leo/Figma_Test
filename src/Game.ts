@@ -17,6 +17,11 @@ export class Game {
   private particleSystem: ParticleSystem;
   private audioManager: AudioManager;
   private touchTarget: { x: number; y: number } | null = null;
+  private pointerSpeed = 0;
+  private lastPointerPosition: { x: number; y: number } | null = null;
+  private lastPointerTime = 0;
+  private readonly isCompactViewport: boolean;
+  private readonly entityScale: number;
 
   private stats: GameStats = {
     score: 0,
@@ -34,8 +39,12 @@ export class Game {
   private animationFrame: number | null = null;
   private loopGeneration: number = 0;
   private keys: Record<string, boolean> = {};
-  private readonly maxObstacles = 24;
-  private readonly maxOrbs = 5;
+  private readonly maxObstacles: number;
+  private readonly maxOrbs: number;
+
+  private get playerBoundaryMargin(): number {
+    return this.isCompactViewport ? 20 : 50;
+  }
 
   private scoreElement: HTMLElement;
   private highScoreElement: HTMLElement;
@@ -47,8 +56,19 @@ export class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.config = config;
+    this.isCompactViewport = window.matchMedia('(max-width: 768px)').matches;
+    this.entityScale = this.isCompactViewport
+      ? Math.max(0.6, Math.min(0.78, Math.min(config.gameWidth, config.gameHeight) / 700))
+      : 1;
+    this.maxObstacles = this.isCompactViewport ? 10 : 24;
+    this.maxOrbs = this.isCompactViewport ? 3 : 5;
 
-    this.player = new Player(config.gameWidth / 2, config.gameHeight / 2, config.playerSpeed);
+    this.player = new Player(
+      config.gameWidth / 2,
+      config.gameHeight / 2,
+      config.playerSpeed,
+      15 * this.entityScale
+    );
     this.particleSystem = new ParticleSystem();
     this.audioManager = new AudioManager({
       volume: 0.18,
@@ -115,10 +135,22 @@ export class Game {
 
   private updateTouchTarget(e: PointerEvent): void {
     const canvasBounds = this.canvas.getBoundingClientRect();
-    this.touchTarget = {
+    const nextTarget = {
       x: (e.clientX - canvasBounds.left) * (this.canvas.width / canvasBounds.width),
       y: (e.clientY - canvasBounds.top) * (this.canvas.height / canvasBounds.height)
     };
+    const now = performance.now();
+    if (this.lastPointerPosition && this.lastPointerTime > 0) {
+      const elapsed = Math.max(now - this.lastPointerTime, 8);
+      const distance = Math.hypot(
+        nextTarget.x - this.lastPointerPosition.x,
+        nextTarget.y - this.lastPointerPosition.y
+      );
+      this.pointerSpeed = Math.min(14, distance / elapsed * 16.67);
+    }
+    this.lastPointerPosition = nextTarget;
+    this.lastPointerTime = now;
+    this.touchTarget = nextTarget;
   }
 
   private handlePointerUp(e: PointerEvent): void {
@@ -126,6 +158,9 @@ export class Game {
       this.canvas.releasePointerCapture(e.pointerId);
     }
     this.touchTarget = null;
+    this.pointerSpeed = 0;
+    this.lastPointerPosition = null;
+    this.lastPointerTime = 0;
   }
 
   private handleResize(): void {
@@ -133,7 +168,7 @@ export class Game {
     this.canvas.height = window.innerHeight;
     this.config.gameWidth = window.innerWidth;
     this.config.gameHeight = window.innerHeight;
-    this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, 50);
+    this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, this.playerBoundaryMargin);
   }
 
   start(): void {
@@ -243,6 +278,8 @@ export class Game {
     }
 
     if (this.touchTarget) {
+      this.pointerSpeed *= Math.pow(0.82, deltaTime);
+      this.player.setSpeed(Math.max(2.5, this.pointerSpeed));
       const targetDx = this.touchTarget.x - this.player.x;
       const targetDy = this.touchTarget.y - this.player.y;
       const distance = Math.sqrt(targetDx * targetDx + targetDy * targetDy);
@@ -253,10 +290,12 @@ export class Game {
         dx = 0;
         dy = 0;
       }
+    } else {
+      this.player.setSpeed(this.config.playerSpeed * (1 + (this.stats.speed - 1) * 0.12) * this.entityScale);
     }
     
     this.player.move(dx, dy);
-    this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, 50);
+    this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, this.playerBoundaryMargin);
   }
 
   private updateSpeed(): void {
@@ -292,8 +331,9 @@ export class Game {
     this.obstacleTimer -= deltaTime;
     if (this.obstacleTimer <= 0 && this.obstacles.length < this.maxObstacles) {
       const spawnInterval = Math.max(
-        this.config.obstacleSpawnInterval - (this.stats.score * 0.1),
-        30
+        (this.config.obstacleSpawnInterval - (this.stats.score * 0.1)) *
+          (this.isCompactViewport ? 1.5 : 1),
+        this.isCompactViewport ? 60 : 30
       );
       this.obstacleTimer = spawnInterval;
       
@@ -332,7 +372,7 @@ export class Game {
         ['square', 'triangle', 'diamond', 'hexagon'];
       const type = types[Math.floor(Math.random() * types.length)];
       
-      const obstacle = new Obstacle(x, y, 2, type);
+      const obstacle = new Obstacle(x, y, 2, type, '#ff00ff', 25 * this.entityScale);
       obstacle.vx = vx;
       obstacle.vy = vy;
       this.obstacles.push(obstacle);
@@ -352,7 +392,7 @@ export class Game {
       const x = margin + Math.random() * Math.max(1, this.config.gameWidth - 2 * margin);
       const y = margin + Math.random() * Math.max(1, this.config.gameHeight - 2 * margin);
       
-      const orb = new Orb(x, y);
+      const orb = new Orb(x, y, 12 * this.entityScale);
       this.orbs.push(orb);
     }
   }
