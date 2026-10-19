@@ -22,6 +22,8 @@ export class Game {
   private lastPointerTime = 0;
   private readonly isCompactViewport: boolean;
   private readonly entityScale: number;
+  private nextGoal = 100;
+  private lastDisplayedScore = -1;
 
   private stats: GameStats = {
     score: 0,
@@ -50,6 +52,7 @@ export class Game {
   private highScoreElement: HTMLElement;
   private comboElement: HTMLElement;
   private speedElement: HTMLElement;
+  private goalElement: HTMLElement;
   private timerElement: HTMLElement;
 
   constructor(canvas: HTMLCanvasElement, config: GameConfig) {
@@ -60,7 +63,7 @@ export class Game {
     this.entityScale = this.isCompactViewport
       ? Math.max(0.6, Math.min(0.78, Math.min(config.gameWidth, config.gameHeight) / 700))
       : 1;
-    this.maxObstacles = this.isCompactViewport ? 10 : 24;
+    this.maxObstacles = this.isCompactViewport ? 10 : 16;
     this.maxOrbs = this.isCompactViewport ? 3 : 5;
 
     this.player = new Player(
@@ -79,6 +82,7 @@ export class Game {
     this.highScoreElement = document.getElementById('hud-high-score')!;
     this.comboElement = document.getElementById('combo-display')!;
     this.speedElement = document.getElementById('speed-display')!;
+    this.goalElement = document.getElementById('goal-display')!;
     this.timerElement = document.getElementById('timer-display')!;
 
     this.loadHighScore();
@@ -230,6 +234,8 @@ export class Game {
       speed: 1.0,
       obstaclesPassed: 0
     };
+    this.nextGoal = 100;
+    this.lastDisplayedScore = -1;
 
     this.obstacles = [];
     this.orbs = [];
@@ -427,6 +433,9 @@ export class Game {
     orb.isActive = false;
     const points = Math.floor(10 * this.stats.combo);
     this.stats.score += points;
+    while (this.stats.score >= this.nextGoal) {
+      this.nextGoal += 100;
+    }
     this.stats.combo++;
     this.stats.maxCombo = Math.max(this.stats.maxCombo, this.stats.combo);
     
@@ -447,10 +456,14 @@ export class Game {
 
   private updateUI(): void {
     this.scoreElement.textContent = this.stats.score.toString();
-    this.scoreElement.classList.remove('score-pop');
-    void this.scoreElement.offsetWidth;
-    this.scoreElement.classList.add('score-pop');
+    if (this.stats.score !== this.lastDisplayedScore) {
+      this.scoreElement.classList.remove('score-pop');
+      void this.scoreElement.offsetWidth;
+      this.scoreElement.classList.add('score-pop');
+      this.lastDisplayedScore = this.stats.score;
+    }
     this.comboElement.textContent = `${this.stats.combo}x`;
+    this.goalElement.textContent = this.nextGoal.toString();
     
     const minutes = Math.floor(this.stats.survivalTime / 60);
     const seconds = Math.floor(this.stats.survivalTime % 60);
