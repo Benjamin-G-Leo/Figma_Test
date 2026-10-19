@@ -4,7 +4,7 @@ export class ParticleSystem {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private particles: Particle[] = [];
-  private maxParticles: number = 120;
+  private maxParticles: number = 80;
 
   constructor() {
     this.canvas = document.getElementById('game-canvas') as HTMLCanvasElement;

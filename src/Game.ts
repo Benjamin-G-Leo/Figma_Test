@@ -63,7 +63,7 @@ export class Game {
     this.entityScale = this.isCompactViewport
       ? Math.max(0.6, Math.min(0.78, Math.min(config.gameWidth, config.gameHeight) / 700))
       : 1;
-    this.maxObstacles = this.isCompactViewport ? 10 : 16;
+    this.maxObstacles = this.isCompactViewport ? 10 : 12;
     this.maxOrbs = this.isCompactViewport ? 3 : 5;
 
     this.player = new Player(
@@ -285,7 +285,10 @@ export class Game {
 
     if (this.touchTarget) {
       this.pointerSpeed *= Math.pow(0.82, deltaTime);
-      this.player.setSpeed(Math.max(2.5, this.pointerSpeed));
+      const pursuitSpeed = this.config.playerSpeed *
+        (1 + (this.stats.speed - 1) * 0.12) *
+        this.entityScale;
+      this.player.setSpeed(Math.max(2.5, pursuitSpeed, this.pointerSpeed));
       const targetDx = this.touchTarget.x - this.player.x;
       const targetDy = this.touchTarget.y - this.player.y;
       const distance = Math.sqrt(targetDx * targetDx + targetDy * targetDy);
@@ -339,7 +342,7 @@ export class Game {
       const spawnInterval = Math.max(
         (this.config.obstacleSpawnInterval - (this.stats.score * 0.1)) *
           (this.isCompactViewport ? 1.5 : 1),
-        this.isCompactViewport ? 60 : 30
+        this.isCompactViewport ? 60 : 75
       );
       this.obstacleTimer = spawnInterval;
       

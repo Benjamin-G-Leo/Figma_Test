@@ -26,7 +26,7 @@ export class BackgroundRenderer {
   }
 
   private initParticles(): void {
-    const particleCount = Math.min(50, Math.floor(this.width * this.height / 20000));
+    const particleCount = Math.min(40, Math.floor(this.width * this.height / 25000));
     for (let i = 0; i < particleCount; i++) {
       this.particles.push({
         x: Math.random() * this.width,
