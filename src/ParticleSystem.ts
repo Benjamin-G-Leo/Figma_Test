@@ -7,6 +7,9 @@ export class ParticleSystem {
   private maxParticles: number = 80;
 
   constructor() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.maxParticles = 20;
+    }
     this.canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
   }
@@ -35,24 +38,12 @@ export class ParticleSystem {
   }
 
   createCollection(x: number, y: number): void {
-    this.createExplosion(x, y, '#ffff00', 8);
+    // Colors must be rgba(...) so draw() can swap in the fade alpha.
+    this.createExplosion(x, y, 'rgba(255, 255, 0, 1)', 8);
   }
 
   createCollision(x: number, y: number): void {
-    this.createExplosion(x, y, '#ff00ff', 25);
-  }
-
-  createTrail(x: number, y: number, color: string = '#00ffff'): void {
-    this.particles.push({
-      x,
-      y,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      life: 10,
-      maxLife: 10,
-      color,
-      size: Math.random() * 2 + 0.5
-    });
+    this.createExplosion(x, y, 'rgba(255, 0, 255, 1)', 25);
   }
 
   update(deltaTime: number = 1): void {

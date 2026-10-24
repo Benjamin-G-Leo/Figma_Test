@@ -78,10 +78,17 @@ class NeonRush {
     const soundIcon = soundToggle?.querySelector('.icon');
     if (soundIcon) soundIcon.textContent = audioEnabled ? '🔊' : '🔇';
 
+    // Auto-pause when the player leaves the tab or window
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.pauseGame();
+    });
+    window.addEventListener('blur', () => this.pauseGame());
+
     // Keyboard pause
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
+        if (e.repeat) return;
         if (this.game) {
           const gameScreen = document.getElementById('hud');
           if (gameScreen && !gameScreen.classList.contains('active')) return;
@@ -218,8 +225,9 @@ class NeonRush {
     
     this.bgRenderer.update();
     this.bgRenderer.render();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     this.isAnimating = true;
-    
+
     const animate = (timestamp: number) => {
       if (timestamp - this.lastBackgroundFrame >= 33) {
         this.bgRenderer.update();

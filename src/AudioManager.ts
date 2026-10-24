@@ -29,7 +29,6 @@ export class AudioManager {
     const sounds = [
       'collect',
       'collision',
-      'click',
       'gameOver',
       'highScore'
     ];
@@ -65,10 +64,6 @@ export class AudioManager {
         case 'collision':
           // Low boom
           value = Math.sin(t * 2 * Math.PI * 100) * Math.exp(-t * 15) * 0.5;
-          break;
-        case 'click':
-          // Sharp click
-          value = (Math.random() * 2 - 1) * Math.exp(-t * 50) * 0.4;
           break;
         case 'gameOver':
           // Descending tone
@@ -140,8 +135,8 @@ export class AudioManager {
     });
     this.activeSources = [];
     
-    if (this.audioContext?.state !== 'closed') {
-      this.audioContext.close();
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      void this.audioContext.close();
     }
     this.audioContext = null;
     this.masterGain = null;

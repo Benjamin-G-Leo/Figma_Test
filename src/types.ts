@@ -15,7 +15,6 @@ export interface GameStats {
   maxCombo: number;
   survivalTime: number;
   speed: number;
-  obstaclesPassed: number;
 }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';

@@ -20,8 +20,8 @@ export class Game {
   private pointerSpeed = 0;
   private lastPointerPosition: { x: number; y: number } | null = null;
   private lastPointerTime = 0;
-  private readonly isCompactViewport: boolean;
-  private readonly entityScale: number;
+  private isCompactViewport = false;
+  private entityScale = 1;
   private nextGoal = 100;
   private lastDisplayedScore = -1;
 
@@ -31,8 +31,7 @@ export class Game {
     combo: 1,
     maxCombo: 1,
     survivalTime: 0,
-    speed: 1.0,
-    obstaclesPassed: 0
+    speed: 1.0
   };
 
   private obstacleTimer: number = 0;
@@ -41,8 +40,8 @@ export class Game {
   private animationFrame: number | null = null;
   private loopGeneration: number = 0;
   private keys: Record<string, boolean> = {};
-  private readonly maxObstacles: number;
-  private readonly maxOrbs: number;
+  private maxObstacles = 12;
+  private maxOrbs = 5;
 
   private get playerBoundaryMargin(): number {
     return this.isCompactViewport ? 20 : 50;
@@ -59,12 +58,7 @@ export class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.config = config;
-    this.isCompactViewport = window.matchMedia('(max-width: 768px)').matches;
-    this.entityScale = this.isCompactViewport
-      ? Math.max(0.6, Math.min(0.78, Math.min(config.gameWidth, config.gameHeight) / 700))
-      : 1;
-    this.maxObstacles = this.isCompactViewport ? 10 : 12;
-    this.maxOrbs = this.isCompactViewport ? 3 : 5;
+    this.applyViewportScale();
 
     this.player = new Player(
       config.gameWidth / 2,
@@ -90,6 +84,7 @@ export class Game {
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
     this.handleResize = this.handleResize.bind(this);
+    this.handleBlur = this.handleBlur.bind(this);
     this.handlePointerDown = this.handlePointerDown.bind(this);
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerUp = this.handlePointerUp.bind(this);
@@ -97,6 +92,7 @@ export class Game {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('resize', this.handleResize);
+    window.addEventListener('blur', this.handleBlur);
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
     this.canvas.addEventListener('pointermove', this.handlePointerMove);
     this.canvas.addEventListener('pointerup', this.handlePointerUp);
@@ -122,6 +118,19 @@ export class Game {
 
   private handleKeyUp(e: KeyboardEvent): void {
     this.keys[e.code] = false;
+  }
+
+  private handleBlur(): void {
+    this.keys = {};
+  }
+
+  private applyViewportScale(): void {
+    this.isCompactViewport = window.matchMedia('(max-width: 768px)').matches;
+    this.entityScale = this.isCompactViewport
+      ? Math.max(0.6, Math.min(0.78, Math.min(this.config.gameWidth, this.config.gameHeight) / 700))
+      : 1;
+    this.maxObstacles = this.isCompactViewport ? 10 : 12;
+    this.maxOrbs = this.isCompactViewport ? 3 : 5;
   }
 
   private handlePointerDown(e: PointerEvent): void {
@@ -172,6 +181,8 @@ export class Game {
     this.canvas.height = window.innerHeight;
     this.config.gameWidth = window.innerWidth;
     this.config.gameHeight = window.innerHeight;
+    this.applyViewportScale();
+    this.player.radius = 15 * this.entityScale;
     this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, this.playerBoundaryMargin);
   }
 
@@ -212,6 +223,7 @@ export class Game {
   }
 
   gameOver(): void {
+    if (this.state === 'gameover') return;
     this.state = 'gameover';
     this.audioManager.play('collision');
     this.audioManager.play('gameOver');
@@ -231,8 +243,7 @@ export class Game {
       combo: 1,
       maxCombo: 1,
       survivalTime: 0,
-      speed: 1.0,
-      obstaclesPassed: 0
+      speed: 1.0
     };
     this.nextGoal = 100;
     this.lastDisplayedScore = -1;
@@ -252,7 +263,8 @@ export class Game {
     if (this.state !== 'playing') return;
     
     const now = performance.now();
-    const deltaTime = (now - this.lastTime) / 16.67;
+    // Clamp so a stalled frame (hidden tab, lag) can't skip time forward.
+    const deltaTime = Math.min((now - this.lastTime) / 16.67, 3);
     this.lastTime = now;
     
     this.handleInput(deltaTime);
@@ -285,10 +297,7 @@ export class Game {
 
     if (this.touchTarget) {
       this.pointerSpeed *= Math.pow(0.82, deltaTime);
-      const pursuitSpeed = this.config.playerSpeed *
-        (1 + (this.stats.speed - 1) * 0.12) *
-        this.entityScale;
-      this.player.setSpeed(Math.max(2.5, pursuitSpeed, this.pointerSpeed));
+      this.player.setSpeed(Math.max(2.5, this.getPlayerSpeed(), this.pointerSpeed));
       const targetDx = this.touchTarget.x - this.player.x;
       const targetDy = this.touchTarget.y - this.player.y;
       const distance = Math.sqrt(targetDx * targetDx + targetDy * targetDy);
@@ -300,15 +309,22 @@ export class Game {
         dy = 0;
       }
     } else {
-      this.player.setSpeed(this.config.playerSpeed * (1 + (this.stats.speed - 1) * 0.12) * this.entityScale);
+      this.player.setSpeed(this.getPlayerSpeed());
     }
     
     this.player.move(dx, dy);
     this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, this.playerBoundaryMargin);
   }
 
+  // Runner gets faster with survival time (+4% per 10s), capped at +40%.
+  private getPlayerSpeed(): number {
+    const timeBoost = Math.min(0.4, Math.floor(this.stats.survivalTime / 10) * 0.04);
+    return this.config.playerSpeed * (1 + timeBoost) * this.entityScale;
+  }
+
   private updateSpeed(): void {
-    const scoreSpeedIncrease = Math.floor(this.stats.score / 10) * 0.05;
+    // Combo makes score climb fast, so score counts for little; time does the real ramp.
+    const scoreSpeedIncrease = Math.floor(this.stats.score / 80) * 0.05;
     const survivalSpeedIncrease = Math.floor(this.stats.survivalTime / 10) * 0.1;
     this.stats.speed = Math.min(3, 1.0 + scoreSpeedIncrease + survivalSpeedIncrease);
     this.speedElement.textContent = `${this.stats.speed.toFixed(1)}x`;
@@ -331,6 +347,8 @@ export class Game {
     this.orbs.forEach(orb => {
       orb.update(this.stats.speed * 0.5, deltaTime);
       orb.checkBounds(this.config.gameWidth, this.config.gameHeight);
+      // Orb timed out uncollected: combo breaks.
+      if (!orb.isActive && orb.lifetime <= 0) this.stats.combo = 1;
     });
     
     this.orbs = this.orbs.filter(orb => orb.isActive);
@@ -338,11 +356,17 @@ export class Game {
 
   private spawnObstacles(deltaTime: number): void {
     this.obstacleTimer -= deltaTime;
-    if (this.obstacleTimer <= 0 && this.obstacles.length < this.maxObstacles) {
+    // Allowed on-screen count starts low and grows slowly with time and score.
+    const obstacleCap = Math.min(
+      this.maxObstacles,
+      6 + Math.floor(this.stats.survivalTime / 6) + Math.floor(this.stats.score / 160)
+    );
+    if (this.obstacleTimer <= 0 && this.obstacles.length < obstacleCap) {
       const spawnInterval = Math.max(
-        (this.config.obstacleSpawnInterval - (this.stats.score * 0.1)) *
+        (this.config.obstacleSpawnInterval -
+          this.stats.survivalTime * 1.2 - this.stats.score * 0.06) *
           (this.isCompactViewport ? 1.5 : 1),
-        this.isCompactViewport ? 60 : 75
+        this.isCompactViewport ? 80 : 60
       );
       this.obstacleTimer = spawnInterval;
       
@@ -355,24 +379,24 @@ export class Game {
           x = Math.random() * this.config.gameWidth;
           y = -25;
           vx = (Math.random() - 0.5) * 2;
-          vy = Math.random() * 2 + 1;
+          vy = Math.random() * 1.8 + 1.1;
           break;
         case 1:
           x = this.config.gameWidth + 25;
           y = Math.random() * this.config.gameHeight;
-          vx = -(Math.random() * 2 + 1);
+          vx = -(Math.random() * 1.8 + 1.1);
           vy = (Math.random() - 0.5) * 2;
           break;
         case 2:
           x = Math.random() * this.config.gameWidth;
           y = this.config.gameHeight + 25;
           vx = (Math.random() - 0.5) * 2;
-          vy = -(Math.random() * 2 + 1);
+          vy = -(Math.random() * 1.8 + 1.1);
           break;
-        case 3:
+        default:
           x = -25;
           y = Math.random() * this.config.gameHeight;
-          vx = Math.random() * 2 + 1;
+          vx = Math.random() * 1.8 + 1.1;
           vy = (Math.random() - 0.5) * 2;
           break;
       }
@@ -420,8 +444,8 @@ export class Game {
     });
     
     this.obstacles.forEach(obstacle => {
-      if (!obstacle.isActive) return;
-      
+      if (!obstacle.isActive || this.player.invincible || this.state !== 'playing') return;
+
       const dx = this.player.x - obstacle.x;
       const dy = this.player.y - obstacle.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -552,12 +576,14 @@ export class Game {
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('blur', this.handleBlur);
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvas.removeEventListener('pointermove', this.handlePointerMove);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
     this.canvas.removeEventListener('pointercancel', this.handlePointerUp);
 
     this.particleSystem.clear();
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.audioManager.cleanup();
   }
 

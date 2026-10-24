@@ -1,5 +1,3 @@
-import { Particle } from './types';
-
 export class Obstacle {
   x: number;
   y: number;
@@ -13,6 +11,8 @@ export class Obstacle {
   type: 'square' | 'triangle' | 'diamond' | 'hexagon';
   isActive: boolean = true;
   lifetime = 12;
+  // False until the shape has fully drifted in from its spawn edge.
+  private entered = false;
 
   constructor(
     x: number,
@@ -45,6 +45,12 @@ export class Obstacle {
   }
 
   checkBounds(width: number, height: number): void {
+    if (!this.entered) {
+      this.entered =
+        this.x - this.radius >= 0 && this.x + this.radius <= width &&
+        this.y - this.radius >= 0 && this.y + this.radius <= height;
+      return;
+    }
     if (this.x - this.radius < 0 || this.x + this.radius > width) {
       this.vx *= -1;
       this.x = Math.max(this.radius, Math.min(width - this.radius, this.x));
@@ -123,17 +129,5 @@ export class Obstacle {
         ctx.closePath();
         break;
     }
-  }
-
-  reset(x: number, y: number, speed: number, type: 'square' | 'triangle' | 'diamond' | 'hexagon'): void {
-    this.x = x;
-    this.y = y;
-    this.vx = (Math.random() - 0.5) * speed;
-    this.vy = (Math.random() - 0.5) * speed;
-    this.type = type;
-    this.isActive = true;
-    this.lifetime = 12;
-    this.rotation = 0;
-    this.pulsePhase = Math.random() * Math.PI * 2;
   }
 }

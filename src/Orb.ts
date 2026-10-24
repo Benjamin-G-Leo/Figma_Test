@@ -1,5 +1,3 @@
-import { Particle } from './types';
-
 export class Orb {
   x: number;
   y: number;
@@ -34,9 +32,6 @@ export class Orb {
     this.pulsePhase += 0.08 * speedMultiplier * frameScale;
     this.lifetime -= frameScale / 60;
     if (this.lifetime <= 0) this.isActive = false;
-
-    // Wrap around screen edges
-    // Keep orb within reasonable bounds
   }
 
   checkBounds(width: number, height: number): void {
@@ -112,15 +107,5 @@ export class Orb {
     ctx.stroke();
 
     ctx.restore();
-  }
-
-  reset(x: number, y: number): void {
-    this.x = x;
-    this.y = y;
-    this.vx = (Math.random() - 0.5) * 1.5;
-    this.vy = (Math.random() - 0.5) * 1.5;
-    this.isActive = true;
-    this.lifetime = 10;
-    this.pulsePhase = Math.random() * Math.PI * 2;
   }
 }

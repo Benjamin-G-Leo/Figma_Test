@@ -23,6 +23,8 @@ export class BackgroundRenderer {
     this.height = window.innerHeight;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    // Resizing clears the canvas; redraw so a static (reduced-motion) background survives.
+    this.render();
   }
 
   private initParticles(): void {
@@ -119,9 +121,6 @@ export class BackgroundRenderer {
       this.ctx.fillStyle = p.color.replace(/[\d.]+\)/, `${alpha})`);
       this.ctx.fill();
     }
-    this.ctx.shadowBlur = 15;
-    this.ctx.shadowColor = '#00ffff';
-    this.ctx.shadowBlur = 0;
   }
 
   getCanvas(): HTMLCanvasElement {

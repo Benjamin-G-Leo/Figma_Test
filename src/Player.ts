@@ -1,5 +1,3 @@
-import { Particle } from './types';
-
 export class Player {
   x: number;
   y: number;
@@ -67,6 +65,10 @@ export class Player {
   }
 
   draw(ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number): void {
+    // Isolate shadow/alpha state so it can't leak into later draws.
+    ctx.save();
+    if (this.invincible) ctx.globalAlpha = 0.55 + Math.sin(this.pulsePhase * 3) * 0.25;
+
     // Draw trail
     for (let i = this.trail.length - 1; i >= 0; i--) {
       const t = this.trail[i];
@@ -130,6 +132,8 @@ export class Player {
     ctx.arc(this.x, this.y, this.radius * 0.4, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.fill();
+
+    ctx.restore();
   }
 
   checkBounds(canvasWidth: number, canvasHeight: number, margin: number = 0): void {
