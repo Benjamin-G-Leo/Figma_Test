@@ -43,9 +43,8 @@ export class Game {
   private maxObstacles = 12;
   private maxOrbs = 5;
 
-  private get playerBoundaryMargin(): number {
-    return this.isCompactViewport ? 20 : 50;
-  }
+  // Small gap so the runner can hug the screen edge without touching it.
+  private readonly playerBoundaryMargin = 6;
 
   private scoreElement: HTMLElement;
   private highScoreElement: HTMLElement;
@@ -269,6 +268,8 @@ export class Game {
     
     this.handleInput(deltaTime);
     this.player.update(deltaTime);
+    // Clamp after the move too, or the last step pokes past the edge.
+    this.player.checkBounds(this.config.gameWidth, this.config.gameHeight, this.playerBoundaryMargin);
     this.stats.survivalTime += deltaTime / 60;
     this.updateSpeed();
     this.updateObstacles(deltaTime);
