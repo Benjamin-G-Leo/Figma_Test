@@ -448,8 +448,8 @@ class NeonRush {
       this.setAuthMessage('Enter a valid email address');
       return;
     }
-    if (password.length < 6) {
-      this.setAuthMessage('Password needs at least 6 characters');
+    if (password.length < 8) {
+      this.setAuthMessage('Password needs at least 8 characters');
       return;
     }
 

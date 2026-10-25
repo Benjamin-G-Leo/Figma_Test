@@ -1,0 +1,26 @@
+# Supabase's free plan pauses a project after about 7 days without activity, which
+# would break login and the leaderboard. This reads one row every 3 days so it never
+# looks idle. Free (GitHub Actions). The URL and publishable key below are public:
+# the same values are already shipped in the website's JavaScript.
+#
+# Note: GitHub turns scheduled workflows off after 60 days with no repo activity.
+# If that happens, re-enable it in the repo's Actions tab (or push any commit).
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Read one leaderboard row
+        run: |
+          curl --fail --silent --show-error --max-time 30 \
+            "https://eraryovjdyrhhockqwlw.supabase.co/rest/v1/scores?select=username&limit=1" \
+            -H "apikey: sb_publishable_wt1c0jEZLp7PkMCId1eTkQ_ozUMhxbC"

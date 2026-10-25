@@ -140,14 +140,16 @@ $$;
 -- Highest score a run of this many seconds could honestly reach.
 -- Orbs spawn at most once a second and the nth orb in a row is worth 10*n, so a
 -- perfect run scores about 5*n^2 + 5*n with n = seconds + 2. Never above the hard
--- cap. Tune both numbers here if you change the game's scoring.
+-- cap (100,000 is roughly 2.5 minutes of flawless play). Tune both numbers here if you
+-- change the game's scoring. Also, every orb is worth a multiple of 10, so every real
+-- score is a multiple of 10 (submit_score checks this too).
 create or replace function public.max_plausible_score(p_seconds numeric)
 returns integer
 language sql
 immutable
 set search_path = ''
 as $$
-  select least(200000, floor(5 * power(p_seconds + 2, 2) + 5 * (p_seconds + 2)))::integer;
+  select least(100000, floor(5 * power(p_seconds + 2, 2) + 5 * (p_seconds + 2)))::integer;
 $$;
 
 -- ===== Functions the game calls =====
@@ -227,7 +229,8 @@ begin
   end if;
 
   v_seconds := extract(epoch from (now() - v_started));
-  if p_score is null or p_score < 0 or p_score > public.max_plausible_score(v_seconds) then
+  if p_score is null or p_score < 0 or p_score % 10 <> 0
+     or p_score > public.max_plausible_score(v_seconds) then
     raise exception 'score not plausible for a % second run', round(v_seconds);
   end if;
 

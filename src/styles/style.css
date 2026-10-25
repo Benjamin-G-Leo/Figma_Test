@@ -814,6 +814,13 @@ html, body {
 
 .auth-message.info { color: #00ffff; }
 
+.auth-note {
+  font-size: 0.8rem;
+  line-height: 1.3;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .auth-form .btn[disabled] { opacity: 0.55; cursor: wait; }
 
 .btn[hidden] { display: none !important; }
