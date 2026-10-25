@@ -3,7 +3,8 @@ import { Obstacle } from './Obstacle';
 import { Orb } from './Orb';
 import { ParticleSystem } from './ParticleSystem';
 import { AudioManager } from './AudioManager';
-import { GameConfig, GameStats, GameState } from './types';
+import { GameConfig, GameStats, GameState, ScoreStore } from './types';
+import { localScoreStore } from './ScoreStore';
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -53,7 +54,10 @@ export class Game {
   private goalElement: HTMLElement;
   private timerElement: HTMLElement;
 
-  constructor(canvas: HTMLCanvasElement, config: GameConfig) {
+  private scoreStore: ScoreStore;
+
+  constructor(canvas: HTMLCanvasElement, config: GameConfig, scoreStore: ScoreStore = localScoreStore) {
+    this.scoreStore = scoreStore;
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.config = config;
@@ -499,17 +503,14 @@ export class Game {
   }
 
   private loadHighScore(): void {
-    const saved = localStorage.getItem('voltRunnerHighScore') ?? localStorage.getItem('neonRushHighScore');
-    if (saved) {
-      this.stats.highScore = parseInt(saved, 10);
-    }
+    this.stats.highScore = this.scoreStore.load();
     this.highScoreElement.textContent = this.stats.highScore.toString();
   }
 
   private updateHighScore(): void {
     if (this.stats.score > this.stats.highScore) {
       this.stats.highScore = this.stats.score;
-      localStorage.setItem('voltRunnerHighScore', this.stats.highScore.toString());
+      this.scoreStore.save(this.stats.highScore);
       this.highScoreElement.textContent = this.stats.highScore.toString();
       
       const badge = document.getElementById('new-high-score');

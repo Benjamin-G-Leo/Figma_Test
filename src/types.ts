@@ -17,6 +17,12 @@ export interface GameStats {
   speed: number;
 }
 
+// Where the player's best score lives: this browser (guest) or their account.
+export interface ScoreStore {
+  load(): number;
+  save(score: number): void;
+}
+
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export interface AudioConfig {

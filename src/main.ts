@@ -1,5 +1,17 @@
 import { Game } from './Game';
 import { BackgroundRenderer } from './BackgroundRenderer';
+import {
+  Account,
+  authEnabled,
+  createCloudScoreStore,
+  fetchCloudScore,
+  getAccount,
+  signIn,
+  signOut,
+  signUp
+} from './auth';
+import { localScoreStore } from './ScoreStore';
+import { ScoreStore } from './types';
 
 // Game configuration
 const config = {
@@ -18,6 +30,9 @@ class NeonRush {
   private bgRenderer: BackgroundRenderer;
   private isAnimating: boolean = false;
   private lastBackgroundFrame = 0;
+  private account: Account | null = null;
+  private scoreStore: ScoreStore = localScoreStore;
+  private authMode: 'login' | 'signup' = 'login';
 
   constructor() {
     this.bgRenderer = new BackgroundRenderer();
@@ -33,6 +48,9 @@ class NeonRush {
     
     // Start background animation
     this.animateBackground();
+
+    // Login screen or menu, depending on session
+    void this.initAccount();
   }
 
   private resizeGameCanvas(): void {
@@ -86,7 +104,11 @@ class NeonRush {
 
     // Keyboard pause
     window.addEventListener('keydown', (e) => {
+      // Let the login form take typing (including spaces)
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea')) return;
       if (e.code === 'Space') {
+        // Outside the game screens leave Space alone, so buttons work from the keyboard
+        if (!this.game || !document.getElementById('hud')?.classList.contains('active')) return;
         e.preventDefault();
         if (e.repeat) return;
         if (this.game) {
@@ -118,7 +140,7 @@ class NeonRush {
     // Create game if not exists
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     if (!this.game) {
-      this.game = new Game(canvas, config);
+      this.game = new Game(canvas, config, this.scoreStore);
     }
     
     // Start game
@@ -210,10 +232,164 @@ class NeonRush {
   }
 
   private updateMenuHighScore(): void {
-    const saved = localStorage.getItem('voltRunnerHighScore') ?? localStorage.getItem('neonRushHighScore');
     const menuHighScore = document.getElementById('menu-high-score');
-    if (saved && menuHighScore) {
-      menuHighScore.textContent = saved;
+    if (menuHighScore) menuHighScore.textContent = this.scoreStore.load().toString();
+  }
+
+  // ===== Accounts =====
+
+  private async initAccount(): Promise<void> {
+    if (!authEnabled) {
+      this.showScreen('main-menu');
+      return;
+    }
+
+    this.setupAuthUI();
+    const account = await getAccount();
+    if (account) await this.useAccount(account);
+    else this.useGuest();
+    this.showScreen(account || this.isGuestSession() ? 'main-menu' : 'auth-screen');
+  }
+
+  private showScreen(id: 'main-menu' | 'auth-screen'): void {
+    for (const screenId of ['main-menu', 'auth-screen']) {
+      document.getElementById(screenId)?.classList.toggle('active', screenId === id);
+    }
+  }
+
+  private isGuestSession(): boolean {
+    try {
+      return sessionStorage.getItem('voltRunnerGuest') === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  private rememberGuest(isGuest: boolean): void {
+    try {
+      if (isGuest) sessionStorage.setItem('voltRunnerGuest', '1');
+      else sessionStorage.removeItem('voltRunnerGuest');
+    } catch {
+      // Storage blocked: guest choice just won't survive a reload.
+    }
+  }
+
+  private async useAccount(account: Account): Promise<void> {
+    const best = await fetchCloudScore(account);
+    this.account = account;
+    this.scoreStore = createCloudScoreStore(account, best);
+    this.refreshAccountUI();
+  }
+
+  private useGuest(): void {
+    this.account = null;
+    this.scoreStore = localScoreStore;
+    this.refreshAccountUI();
+  }
+
+  private refreshAccountUI(): void {
+    const bar = document.getElementById('account-bar');
+    const name = document.getElementById('account-name');
+    const button = document.getElementById('account-btn');
+    if (bar) bar.hidden = !authEnabled;
+    if (name) name.textContent = this.account ? this.account.username.toUpperCase() : 'GUEST';
+    if (button) button.textContent = this.account ? 'LOG OUT' : 'LOG IN';
+    this.updateMenuHighScore();
+  }
+
+  private setupAuthUI(): void {
+    const byId = (id: string) => document.getElementById(id);
+
+    byId('tab-login')?.addEventListener('click', () => this.setAuthMode('login'));
+    byId('tab-signup')?.addEventListener('click', () => this.setAuthMode('signup'));
+    byId('auth-form')?.addEventListener('submit', (e) => void this.submitAuth(e));
+
+    byId('guest-btn')?.addEventListener('click', () => {
+      this.useGuest();
+      this.rememberGuest(true);
+      this.showScreen('main-menu');
+    });
+
+    byId('account-btn')?.addEventListener('click', async () => {
+      if (this.account) {
+        await signOut();
+        this.useGuest();
+        this.rememberGuest(true);
+      } else {
+        this.setAuthMode('login');
+        this.showScreen('auth-screen');
+      }
+    });
+  }
+
+  private setAuthMode(mode: 'login' | 'signup'): void {
+    this.authMode = mode;
+    const signup = mode === 'signup';
+    const usernameField = document.getElementById('field-username');
+    if (usernameField) usernameField.hidden = !signup;
+    document.getElementById('tab-login')?.classList.toggle('active', !signup);
+    document.getElementById('tab-signup')?.classList.toggle('active', signup);
+    document.getElementById('tab-login')?.setAttribute('aria-selected', String(!signup));
+    document.getElementById('tab-signup')?.setAttribute('aria-selected', String(signup));
+    const submit = document.getElementById('auth-submit');
+    if (submit) submit.textContent = signup ? 'CREATE ACCOUNT' : 'LOG IN';
+    const password = document.getElementById('auth-password') as HTMLInputElement | null;
+    if (password) password.autocomplete = signup ? 'new-password' : 'current-password';
+    this.setAuthMessage('');
+  }
+
+  private setAuthMessage(text: string, isInfo = false): void {
+    const message = document.getElementById('auth-message');
+    if (!message) return;
+    message.textContent = text;
+    message.classList.toggle('info', isInfo);
+  }
+
+  private async submitAuth(e: Event): Promise<void> {
+    e.preventDefault();
+    const field = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+    const username = field('auth-username').trim();
+    const email = field('auth-email').trim();
+    const password = field('auth-password');
+    const signup = this.authMode === 'signup';
+
+    if (signup && !/^[A-Za-z0-9_]{3,16}$/.test(username)) {
+      this.setAuthMessage('Username: 3-16 letters, numbers or _');
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      this.setAuthMessage('Enter a valid email address');
+      return;
+    }
+    if (password.length < 6) {
+      this.setAuthMessage('Password needs at least 6 characters');
+      return;
+    }
+
+    const submit = document.getElementById('auth-submit') as HTMLButtonElement | null;
+    if (submit) submit.disabled = true;
+    this.setAuthMessage('');
+
+    try {
+      const result = signup ? await signUp(username, email, password) : await signIn(email, password);
+      if (!result.ok) {
+        this.setAuthMessage(result.error);
+        return;
+      }
+      if (result.account === null) {
+        this.setAuthMode('login');
+        this.setAuthMessage('Account created. Check your email to confirm, then log in.', true);
+        return;
+      }
+      await this.useAccount(result.account);
+      this.rememberGuest(false);
+      (document.getElementById('auth-password') as HTMLInputElement).value = '';
+      this.showScreen('main-menu');
+    } catch (error) {
+      console.warn('Auth failed:', error);
+      this.setAuthMessage('Something went wrong. Try again.');
+    } finally {
+      if (submit) submit.disabled = false;
     }
   }
 

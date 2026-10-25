@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Volt Runner — a neon arcade browser game on HTML5 canvas, written in TypeScript with Vite and no framework or runtime dependencies. The player collects energy orbs for combo-multiplied points while dodging obstacles that speed up over time. Works with keyboard (WASD/arrows, Space to pause) and touch.
+Volt Runner — a neon arcade browser game on HTML5 canvas, written in TypeScript with Vite and no framework. Its one runtime dependency is `@supabase/supabase-js`, used only for optional accounts. The player collects energy orbs for combo-multiplied points while dodging obstacles that speed up over time. Works with keyboard (WASD/arrows, Space to pause) and touch.
 
 ## Commands
 
@@ -11,7 +11,11 @@ npm run build     # production build → dist/
 npm run preview   # serve the built dist/
 ```
 
-No tests and no linter. There is **no `tsconfig.json` or `typescript` dependency** — Vite strips the types without checking them, so type errors won't fail the build. Run `npx -p typescript tsc --noEmit --strict --target es2020 --lib es2020,dom src/*.ts` to type-check, or add a tsconfig.
+No tests and no linter. There is **no `tsconfig.json` or `typescript` dependency** — Vite strips the types without checking them, so type errors won't fail the build. Run `npx -p typescript tsc --noEmit --strict --target es2020 --lib es2020,dom --module esnext --moduleResolution bundler --skipLibCheck src/*.ts` to type-check, or add a tsconfig.
+
+## Accounts (Supabase)
+
+Login is optional: players can always play as guest. Config comes from `.env.local` (gitignored; template in `.env.example`) as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Only the publishable key ever goes in the frontend, never the secret / service_role key. Without the env vars the game runs guest-only. For deploys (Vercel), set the same two vars in the host's settings. The database table and row-level-security rules live in `supabase/schema.sql` and must be run once in the Supabase SQL editor. Login is email + password; the username is just a display name.
 
 ## Structure
 
@@ -21,6 +25,7 @@ No tests and no linter. There is **no `tsconfig.json` or `typescript` dependency
 - `Game.ts` — main loop, game state, scoring, combos, the score-goal system, difficulty ramp, collisions, HUD updates.
 - `Player.ts`, `Orb.ts`, `Obstacle.ts` — entities, each owning its movement and rendering.
 - `ParticleSystem.ts`, `BackgroundRenderer.ts`, `AudioManager.ts` (Web Audio sounds generated in code, no audio files).
+- `auth.ts` — Supabase client, sign up / log in / log out, cloud high score. `ScoreStore.ts` — guest high score in localStorage. `Game` takes a `ScoreStore`, so it doesn't know whether the score is local or cloud.
 - `types.ts` — shared types. `styles/style.css` — all UI styling and animations.
 
 ## Things to preserve
@@ -29,7 +34,7 @@ No tests and no linter. There is **no `tsconfig.json` or `typescript` dependency
 - **Pause freezes everything** — gameplay, particles, obstacles and background. Pause/resume state lives in `main.ts`.
 - **Performance:** entity and particle counts are deliberately capped with short lifetimes (recent commits tuned this for mobile). Keep caps when adding effects.
 - **Responsive canvas** matches the viewport and resizes on rotate; entity sizes scale on mobile. Honour `prefers-reduced-motion`.
-- localStorage keys: `voltRunnerHighScore` (falls back to legacy `neonRushHighScore`) and `voltRunnerAudio`. Don't rename them, or players lose saved data.
+- localStorage keys: `voltRunnerHighScore` (falls back to legacy `neonRushHighScore`) and `voltRunnerAudio`. Don't rename them, or players lose saved data. Signed-in players' scores live in Supabase, not in these keys.
 
 ## Git hygiene
 

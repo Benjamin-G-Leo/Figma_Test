@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: 'src',
+  // root is src/, so read .env files from the project folder instead
+  envDir: '..',
   build: {
     outDir: '../dist',
     rollupOptions: {

@@ -26,8 +26,40 @@
   <!-- UI Overlay Layer -->
   <div id="ui-layer">
     
+    <!-- Login / Sign up Screen (shown first; JS reveals it or the menu) -->
+    <div id="auth-screen" class="screen">
+      <div class="auth-card">
+        <h2 class="auth-title">PLAYER LOGIN</h2>
+        <div class="auth-tabs" role="tablist">
+          <button type="button" id="tab-login" class="auth-tab active" role="tab" aria-selected="true">LOG IN</button>
+          <button type="button" id="tab-signup" class="auth-tab" role="tab" aria-selected="false">SIGN UP</button>
+        </div>
+        <form id="auth-form" class="auth-form" novalidate>
+          <label class="auth-field" id="field-username" hidden>
+            <span>USERNAME</span>
+            <input id="auth-username" type="text" autocomplete="username" maxlength="16" placeholder="3-16 letters, numbers, _">
+          </label>
+          <label class="auth-field">
+            <span>EMAIL</span>
+            <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com">
+          </label>
+          <label class="auth-field">
+            <span>PASSWORD</span>
+            <input id="auth-password" type="password" autocomplete="current-password" placeholder="at least 6 characters">
+          </label>
+          <p id="auth-message" class="auth-message" role="alert"></p>
+          <button id="auth-submit" type="submit" class="btn btn-primary btn-lg">LOG IN</button>
+        </form>
+        <button type="button" id="guest-btn" class="btn btn-secondary">PLAY AS GUEST</button>
+      </div>
+    </div>
+
     <!-- Main Menu Screen -->
-    <div id="main-menu" class="screen active">
+    <div id="main-menu" class="screen">
+      <div id="account-bar" class="account-bar" hidden>
+        <span id="account-name" class="account-name">GUEST</span>
+        <button type="button" id="account-btn" class="btn btn-secondary btn-sm">LOG IN</button>
+      </div>
       <div class="menu-content">
         <div class="title-wrapper">
           <h1 class="game-title">VOLT RUNNER</h1>
