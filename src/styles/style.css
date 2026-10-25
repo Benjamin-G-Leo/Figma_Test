@@ -816,6 +816,70 @@ html, body {
 
 .auth-form .btn[disabled] { opacity: 0.55; cursor: wait; }
 
+.btn[hidden] { display: none !important; }
+
+/* ===== LEADERBOARD ===== */
+.lb-card { z-index: 5; }
+
+/* Game over has three buttons now: let them wrap on narrow screens */
+.game-over-actions { flex-wrap: wrap; justify-content: center; }
+
+.lb-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 3rem;
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 1.05rem;
+}
+
+.lb-rank {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lb-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.lb-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #00ffff;
+}
+
+.lb-row.top-1 .lb-rank { color: #ffff00; text-shadow: 0 0 10px rgba(255, 255, 0, 0.6); }
+.lb-row.top-2 .lb-rank { color: #e0e0ff; }
+.lb-row.top-3 .lb-rank { color: #ffaa55; }
+
+.lb-row.is-me {
+  background: linear-gradient(135deg, rgba(255, 0, 255, 0.28), rgba(0, 255, 255, 0.2));
+  box-shadow: 0 0 14px rgba(255, 0, 255, 0.3);
+}
+
+.lb-status {
+  min-height: 1.2em;
+  font-size: 0.95rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .btn-sm { font-size: 0.75rem; padding: 0.45rem 1rem; border-radius: 0.6rem; }
 
 .account-bar {

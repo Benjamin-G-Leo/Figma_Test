@@ -197,6 +197,7 @@ export class Game {
     document.getElementById('game-over')?.classList.remove('show');
     document.getElementById('pause-overlay')?.classList.add('hidden');
     this.resetGame();
+    this.scoreStore.startRun?.();
     this.lastTime = performance.now();
     this.loop();
   }
@@ -220,6 +221,7 @@ export class Game {
     void this.audioManager.initialize();
     this.stopLoop();
     this.resetGame();
+    this.scoreStore.startRun?.();
     this.state = 'playing';
     this.lastTime = performance.now();
     this.loop();

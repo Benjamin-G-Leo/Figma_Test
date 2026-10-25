@@ -5,7 +5,10 @@ import {
   authEnabled,
   createCloudScoreStore,
   fetchCloudScore,
+  fetchLeaderboard,
+  fetchRank,
   getAccount,
+  onSignedOut,
   signIn,
   signOut,
   signUp
@@ -33,6 +36,7 @@ class NeonRush {
   private account: Account | null = null;
   private scoreStore: ScoreStore = localScoreStore;
   private authMode: 'login' | 'signup' = 'login';
+  private leaderboardRequest = 0;
 
   constructor() {
     this.bgRenderer = new BackgroundRenderer();
@@ -107,6 +111,8 @@ class NeonRush {
       // Let the login form take typing (including spaces)
       if ((e.target as HTMLElement | null)?.closest?.('input, textarea')) return;
       if (e.code === 'Space') {
+        // Leaderboard open: Space belongs to its buttons
+        if (!document.getElementById('leaderboard-overlay')?.classList.contains('hidden')) return;
         // Outside the game screens leave Space alone, so buttons work from the keyboard
         if (!this.game || !document.getElementById('hud')?.classList.contains('active')) return;
         e.preventDefault();
@@ -277,7 +283,7 @@ class NeonRush {
   private async useAccount(account: Account): Promise<void> {
     const best = await fetchCloudScore(account);
     this.account = account;
-    this.scoreStore = createCloudScoreStore(account, best);
+    this.scoreStore = createCloudScoreStore(best);
     this.refreshAccountUI();
   }
 
@@ -292,6 +298,7 @@ class NeonRush {
     const name = document.getElementById('account-name');
     const button = document.getElementById('account-btn');
     if (bar) bar.hidden = !authEnabled;
+    document.querySelectorAll<HTMLElement>('.js-open-leaderboard').forEach((b) => (b.hidden = !authEnabled));
     if (name) name.textContent = this.account ? this.account.username.toUpperCase() : 'GUEST';
     if (button) button.textContent = this.account ? 'LOG OUT' : 'LOG IN';
     this.updateMenuHighScore();
@@ -310,6 +317,20 @@ class NeonRush {
       this.showScreen('main-menu');
     });
 
+    document.querySelectorAll('.js-open-leaderboard').forEach((button) =>
+      button.addEventListener('click', () => void this.openLeaderboard())
+    );
+    byId('lb-close-btn')?.addEventListener('click', () => this.closeLeaderboard());
+    // Session ended (expired / revoked): fall back to guest so the UI doesn't lie
+    onSignedOut(() => {
+      if (!this.account) return;
+      this.useGuest();
+      this.rememberGuest(true);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape') this.closeLeaderboard();
+    });
+
     byId('account-btn')?.addEventListener('click', async () => {
       if (this.account) {
         await signOut();
@@ -320,6 +341,72 @@ class NeonRush {
         this.showScreen('auth-screen');
       }
     });
+  }
+
+  private async openLeaderboard(): Promise<void> {
+    const overlay = document.getElementById('leaderboard-overlay');
+    const list = document.getElementById('lb-list');
+    const status = document.getElementById('lb-status');
+    if (!overlay || !list || !status) return;
+
+    overlay.classList.remove('hidden');
+    document.getElementById('lb-close-btn')?.focus();
+    list.replaceChildren();
+    status.textContent = 'Loading...';
+    const request = ++this.leaderboardRequest;
+
+    // Wait for a just-finished run to be saved so it shows up
+    await this.scoreStore.flush?.();
+    if (request !== this.leaderboardRequest) return;
+
+    const { rows, failed } = await fetchLeaderboard(10);
+    if (request !== this.leaderboardRequest) return; // closed or reopened meanwhile
+    if (failed) {
+      status.textContent = 'Could not load the leaderboard.';
+      return;
+    }
+
+    const me = this.account?.username.toLowerCase();
+    // textContent only: usernames are player input
+    rows.forEach((row, index) => {
+      const item = document.createElement('li');
+      item.className = 'lb-row';
+      if (index < 3) item.classList.add(`top-${index + 1}`);
+      if (row.username.toLowerCase() === me) item.classList.add('is-me');
+      const rank = document.createElement('span');
+      rank.className = 'lb-rank';
+      rank.textContent = `#${index + 1}`;
+      const name = document.createElement('span');
+      name.className = 'lb-name';
+      name.textContent = row.username;
+      const score = document.createElement('span');
+      score.className = 'lb-score';
+      score.textContent = row.high_score.toLocaleString();
+      item.append(rank, name, score);
+      list.appendChild(item);
+    });
+
+    const best = this.scoreStore.load();
+    const onBoard = rows.some((row) => row.username.toLowerCase() === me);
+    if (!rows.length) {
+      status.textContent = 'No scores yet. Be the first!';
+    } else if (!this.account) {
+      status.textContent = 'Log in to put your score on the board.';
+    } else if (onBoard) {
+      status.textContent = '';
+    } else if (best <= 0) {
+      status.textContent = 'Finish a run to get on the board.';
+    } else {
+      status.textContent = '';
+      const rank = await fetchRank(best);
+      if (request !== this.leaderboardRequest) return;
+      if (rank) status.textContent = `You are #${rank} with ${best.toLocaleString()}`;
+    }
+  }
+
+  private closeLeaderboard(): void {
+    this.leaderboardRequest++;
+    document.getElementById('leaderboard-overlay')?.classList.add('hidden');
   }
 
   private setAuthMode(mode: 'login' | 'signup'): void {

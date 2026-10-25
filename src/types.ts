@@ -21,6 +21,10 @@ export interface GameStats {
 export interface ScoreStore {
   load(): number;
   save(score: number): void;
+  // Account stores use this to tell the server a run began (for score checks).
+  startRun?(): void;
+  // Resolves once every pending save has finished (so the leaderboard is current).
+  flush?(): Promise<void>;
 }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';

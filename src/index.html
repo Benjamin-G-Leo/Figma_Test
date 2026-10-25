@@ -76,7 +76,11 @@
         <button id="start-btn" class="btn btn-primary btn-glow">
           START GAME
         </button>
-        
+
+        <button id="leaderboard-btn" class="btn btn-secondary js-open-leaderboard" hidden>
+          LEADERBOARD
+        </button>
+
         <div class="controls-info">
           <div class="controls-group">
             <span class="ctrl-key">WASD / Arrow Keys</span>
@@ -199,7 +203,18 @@
         <div class="game-over-actions">
           <button id="play-again-btn" class="btn btn-primary btn-lg btn-glow">PLAY AGAIN</button>
           <button id="main-menu-btn" class="btn btn-secondary btn-lg">MAIN MENU</button>
+          <button id="gameover-leaderboard-btn" class="btn btn-secondary btn-lg js-open-leaderboard" hidden>LEADERBOARD</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Overlay -->
+    <div id="leaderboard-overlay" class="overlay hidden" role="dialog" aria-label="Leaderboard">
+      <div class="auth-card lb-card">
+        <h2 class="auth-title">LEADERBOARD</h2>
+        <ol id="lb-list" class="lb-list"></ol>
+        <p id="lb-status" class="lb-status"></p>
+        <button id="lb-close-btn" class="btn btn-primary btn-lg">CLOSE</button>
       </div>
     </div>
 
