@@ -29,6 +29,8 @@ export interface ScoreStore {
   hasPending?(): boolean;
   // Try to send any waiting score now (call when the network comes back).
   sync?(): void;
+  // Update the best score from the server in the background.
+  refresh?(): Promise<void>;
 }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';

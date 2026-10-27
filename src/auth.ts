@@ -37,9 +37,38 @@ function isOffline(): boolean {
   return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
 
-// A failed request that never reached the server (no internet, DNS, blocked).
+// A failed request that never reached the server (no internet, DNS, blocked, timed out).
 function isNetworkError(message: string): boolean {
-  return /failed to fetch|network|load failed|fetch failed/i.test(message);
+  return /failed to fetch|network|load failed|fetch failed|abort|timed out/i.test(message);
+}
+
+const SLOW_MESSAGE = 'This is taking too long. Check your connection and try again.';
+const REQUEST_TIMEOUT_MS = 8000;
+const TIMED_OUT = Symbol('timed out');
+
+// Weak or captive Wi-Fi can leave a request hanging for minutes. Every server call is
+// cut off after a few seconds, so one stuck call can't freeze the queue or a screen.
+function timeoutSignal(ms = REQUEST_TIMEOUT_MS): AbortSignal {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+
+// For calls that can't take an abort signal (login): stop waiting after `ms`.
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T | typeof TIMED_OUT> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(TIMED_OUT), ms);
+    Promise.resolve(promise).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 // While offline the login token can't be refreshed, so Supabase reports "no session"
@@ -58,10 +87,14 @@ function readStoredAccount(): Account | null {
 export async function getAccount(): Promise<Account | null> {
   if (!client) return null;
   try {
-    const { data } = await client.auth.getSession();
-    if (data.session) return toAccount(data.session.user);
+    const result = await withTimeout(client.auth.getSession(), 4000);
+    // Too slow to answer (weak connection): trust the saved login instead of waiting.
+    if (result === TIMED_OUT) return readStoredAccount();
+    if (result.data.session) return toAccount(result.data.session.user);
+    // No session because the token could not be refreshed over the network: still logged in.
+    if (result.error && isNetworkError(result.error.message)) return readStoredAccount();
   } catch {
-    // fall through to the offline check
+    return readStoredAccount();
   }
   return isOffline() ? readStoredAccount() : null;
 }
@@ -71,17 +104,20 @@ export async function signUp(username: string, email: string, password: string):
   if (isOffline()) return { ok: false, error: OFFLINE_MESSAGE };
 
   // Usernames are unique; check first so the player gets a clear message.
-  const { data: available, error: checkError } = await client.rpc('username_available', { p_name: username });
+  const { data: available, error: checkError } = await client
+    .rpc('username_available', { p_name: username })
+    .abortSignal(timeoutSignal());
   if (checkError) {
     return { ok: false, error: isNetworkError(checkError.message) ? OFFLINE_MESSAGE : 'Could not check that username. Try again.' };
   }
   if (available !== true) return { ok: false, error: 'That username is taken or not allowed.' };
 
-  const { data, error } = await client.auth.signUp({
-    email,
-    password,
-    options: { data: { username } }
-  });
+  const response = await withTimeout(
+    client.auth.signUp({ email, password, options: { data: { username } } }),
+    15000
+  );
+  if (response === TIMED_OUT) return { ok: false, error: SLOW_MESSAGE };
+  const { data, error } = response;
   if (error) {
     // The database refuses the account if someone grabbed the name a moment ago.
     if (/database error/i.test(error.message)) {
@@ -100,7 +136,9 @@ export async function signUp(username: string, email: string, password: string):
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   if (!client) return { ok: false, error: 'Accounts are not set up.' };
   if (isOffline()) return { ok: false, error: OFFLINE_MESSAGE };
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  const response = await withTimeout(client.auth.signInWithPassword({ email, password }), 15000);
+  if (response === TIMED_OUT) return { ok: false, error: SLOW_MESSAGE };
+  const { data, error } = response;
   if (error) return { ok: false, error: isNetworkError(error.message) ? OFFLINE_MESSAGE : error.message };
   return { ok: true, account: toAccount(data.user) };
 }
@@ -141,6 +179,11 @@ function cacheCloudBest(id: string, score: number): void {
   }
 }
 
+// Last best the server reported for this account (instant, works offline).
+export function getCachedCloudScore(account: Account): number {
+  return readCachedCloudBest(account.id);
+}
+
 export async function fetchCloudScore(account: Account): Promise<number> {
   if (!client) return 0;
   try {
@@ -148,6 +191,7 @@ export async function fetchCloudScore(account: Account): Promise<number> {
       .from('scores')
       .select('high_score')
       .eq('user_id', account.id)
+      .abortSignal(timeoutSignal())
       .maybeSingle();
     if (error) throw error;
     const score = data?.high_score ?? 0;
@@ -169,7 +213,8 @@ export async function fetchLeaderboard(limit = 10): Promise<{ rows: LeaderboardR
       .gt('high_score', 0)
       .order('high_score', { ascending: false })
       .order('updated_at', { ascending: true })
-      .limit(limit);
+      .limit(limit)
+      .abortSignal(timeoutSignal());
     if (error) throw error;
     return { rows: data ?? [], failed: false };
   } catch (error) {
@@ -185,7 +230,8 @@ export async function fetchRank(score: number): Promise<number | null> {
     const { count, error } = await client
       .from('scores')
       .select('user_id', { count: 'exact', head: true })
-      .gt('high_score', score);
+      .gt('high_score', score)
+      .abortSignal(timeoutSignal());
     if (error) throw error;
     return (count ?? 0) + 1;
   } catch (error) {
@@ -217,18 +263,31 @@ function readPending(id: string): PendingScore | null {
   }
 }
 
-function writePending(id: string, pending: PendingScore | null): void {
+// Returns false if the browser would not let us save (private mode, storage full).
+function writePending(id: string, pending: PendingScore | null): boolean {
   try {
     if (pending) localStorage.setItem(pendingKey(id), JSON.stringify(pending));
     else localStorage.removeItem(pendingKey(id));
+    return true;
   } catch {
-    // Storage blocked: the score just can't wait for the next connection.
+    return false;
   }
+}
+
+function errorCode(error: unknown): string | undefined {
+  return (error as { code?: string } | null)?.code;
 }
 
 // The server said no (a database "raise exception"), as opposed to a connection problem.
 function isServerRejection(error: unknown): boolean {
-  return (error as { code?: string } | null)?.code === 'P0001';
+  return errorCode(error) === 'P0001';
+}
+
+// The server said "not yet": the claimed run is longer than the time since it last heard
+// from this player (for example another device just checked in). Keep the score and try
+// again later, when enough time has passed.
+function isTooSoon(error: unknown): boolean {
+  return errorCode(error) === 'VR001';
 }
 
 // Score store backed by the player's account; `initial` is their saved best.
@@ -239,8 +298,15 @@ export function createCloudScoreStore(
   initial: number,
   onChange: (event: SyncEvent) => void = () => {}
 ): ScoreStore {
+  // If the browser won't let us save to storage, the waiting score is kept in memory.
+  let memoryPending: PendingScore | null = null;
+  const getPending = (): PendingScore | null => readPending(account.id) ?? memoryPending;
+  const setPending = (pending: PendingScore | null): void => {
+    memoryPending = writePending(account.id, pending) ? null : pending;
+  };
+
   let cloudBest = initial;
-  let best = Math.max(initial, readPending(account.id)?.score ?? 0);
+  let best = Math.max(initial, getPending()?.score ?? 0);
   // Each run remembers whether the server knows about it (start_run worked).
   let run = { start: performance.now(), registered: false };
   let queue: Promise<unknown> = Promise.resolve();
@@ -251,25 +317,26 @@ export function createCloudScoreStore(
 
   // Send a waiting score. Safe to call any time; it does nothing offline or with nothing waiting.
   const syncPending = async (): Promise<void> => {
-    const pending = readPending(account.id);
+    const pending = getPending();
     if (!pending || !client || isOffline()) return;
 
-    const { data, error } = await client.rpc('submit_offline_score', {
-      p_score: pending.score,
-      p_seconds: pending.seconds
-    });
+    const { data, error } = await client
+      .rpc('submit_offline_score', { p_score: pending.score, p_seconds: pending.seconds })
+      .abortSignal(timeoutSignal());
     if (!error) {
-      writePending(account.id, null);
+      setPending(null);
       cloudBest = typeof data === 'number' ? data : Math.max(cloudBest, pending.score);
       cacheCloudBest(account.id, cloudBest);
       best = Math.max(best, cloudBest);
       onChange('synced');
     } else if (isServerRejection(error)) {
       console.warn('Server did not accept the waiting score:', error);
-      writePending(account.id, null);
+      setPending(null);
       cloudBest = await fetchCloudScore(account);
       best = cloudBest;
       onChange('rejected');
+    } else if (isTooSoon(error)) {
+      console.warn('Waiting score is too soon to check; will try again later:', error);
     }
     // Any other error is a connection or login problem: keep the score and retry later.
   };
@@ -277,8 +344,14 @@ export function createCloudScoreStore(
   return {
     load: () => best,
     flush: () => queue.then(() => undefined),
-    hasPending: () => readPending(account.id) !== null,
+    hasPending: () => getPending() !== null,
     sync: () => enqueue(syncPending),
+    // Update the best from the server in the background (never blocks the screen).
+    refresh: async () => {
+      const fromServer = await fetchCloudScore(account);
+      cloudBest = Math.max(cloudBest, fromServer);
+      best = Math.max(best, cloudBest, getPending()?.score ?? 0);
+    },
     startRun: () => {
       const thisRun = { start: performance.now(), registered: false };
       run = thisRun;
@@ -291,7 +364,7 @@ export function createCloudScoreStore(
         } catch (error) {
           console.warn('Could not send the waiting score:', error);
         }
-        const { error } = await client.rpc('start_run');
+        const { error } = await client.rpc('start_run').abortSignal(timeoutSignal());
         thisRun.registered = !error;
       });
     },
@@ -300,10 +373,12 @@ export function createCloudScoreStore(
       best = score;
       if (!client) return;
       const thisRun = run;
-      const seconds = Math.max(1, Math.round((performance.now() - thisRun.start) / 1000));
+      // Whole run length (pauses included, which only ever makes it longer). The server
+      // refuses anything over a day, so cap it (a laptop asleep mid-run).
+      const seconds = Math.min(86400, Math.max(1, Math.round((performance.now() - thisRun.start) / 1000)));
       enqueue(async () => {
         if (thisRun.registered) {
-          const { error } = await client.rpc('submit_score', { p_score: score });
+          const { error } = await client.rpc('submit_score', { p_score: score }).abortSignal(timeoutSignal());
           if (!error) {
             cloudBest = Math.max(cloudBest, score);
             cacheCloudBest(account.id, cloudBest);
@@ -312,8 +387,8 @@ export function createCloudScoreStore(
           console.warn('Live save failed, keeping the score to send later:', error);
         }
         // Offline, or the live save failed: keep it on this device and send it when we can.
-        const waiting = readPending(account.id);
-        if (!waiting || score > waiting.score) writePending(account.id, { score, seconds });
+        const waiting = getPending();
+        if (!waiting || score > waiting.score) setPending({ score, seconds });
         onChange('pending');
         await syncPending();
       });

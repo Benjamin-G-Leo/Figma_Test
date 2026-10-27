@@ -4,10 +4,10 @@ import {
   Account,
   authEnabled,
   createCloudScoreStore,
-  fetchCloudScore,
   fetchLeaderboard,
   fetchRank,
   getAccount,
+  getCachedCloudScore,
   onSignedOut,
   signIn,
   signOut,
@@ -286,9 +286,11 @@ class NeonRush {
   private registerServiceWorker(): void {
     // Only in the built site (the dev server has no service worker file).
     if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return;
-    window.addEventListener('load', () => {
+    const register = () =>
       navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('Offline mode unavailable:', error));
-    });
+    // Wait for the page to finish loading so this never slows the first paint.
+    if (document.readyState === 'complete') void register();
+    else window.addEventListener('load', () => void register());
   }
 
   // ===== Accounts =====
@@ -330,11 +332,16 @@ class NeonRush {
   }
 
   private async useAccount(account: Account): Promise<void> {
-    const best = await fetchCloudScore(account);
+    // Start from the last best we know (instant, works offline); the real one is fetched
+    // in the background so a slow connection never delays the menu.
     this.account = account;
-    this.scoreStore = createCloudScoreStore(account, best, (event) => this.handleSyncEvent(event));
+    const store = createCloudScoreStore(account, getCachedCloudScore(account), (event) => this.handleSyncEvent(event));
+    this.scoreStore = store;
     this.refreshAccountUI();
-    this.scoreStore.sync?.(); // send a score that was waiting for a connection
+    store.sync?.(); // send a score that was waiting for a connection
+    void store.refresh?.().then(() => {
+      if (this.scoreStore === store) this.updateMenuHighScore();
+    });
   }
 
   private useGuest(): void {
@@ -406,8 +413,8 @@ class NeonRush {
     status.textContent = 'Loading...';
     const request = ++this.leaderboardRequest;
 
-    // Wait for a just-finished run to be saved so it shows up
-    await this.scoreStore.flush?.();
+    // Wait (briefly) for a just-finished run to be saved so it shows up
+    await Promise.race([this.scoreStore.flush?.(), new Promise((resolve) => setTimeout(resolve, 3000))]);
     if (request !== this.leaderboardRequest) return;
 
     const { rows, failed } = await fetchLeaderboard(10);

@@ -324,7 +324,9 @@ begin
 
   v_available := extract(epoch from (now() - v_last));
   if p_seconds > v_available + 5 then
-    raise exception 'run longer than the time since last contact';
+    -- Own error code (VR001): the game keeps the score and retries later, instead of
+    -- dropping it, because more time may pass (e.g. another device just checked in).
+    raise exception 'run longer than the time since last contact' using errcode = 'VR001';
   end if;
 
   if p_score is null or p_score < 0 or p_score % 10 <> 0
