@@ -3,7 +3,49 @@
    Premium cyberpunk futuristic design
    ===================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+/* Fonts are bundled (not loaded from Google) so the game works offline. See src/fonts/README.md */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('../fonts/orbitron-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('../fonts/rajdhani-300.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/rajdhani-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fonts/rajdhani-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/rajdhani-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/rajdhani-700.woff2') format('woff2');
+}
 
 /* ===== BASE & RESET ===== */
 *, *::before, *::after {
@@ -813,6 +855,25 @@ html, body {
 }
 
 .auth-message.info { color: #00ffff; }
+
+.net-badge {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 4;
+  max-width: calc(100vw - 2rem);
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 0, 0.45);
+  background: rgba(12, 1, 24, 0.85);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: #ffff00;
+  pointer-events: none;
+}
+
+.net-badge[hidden] { display: none; }
 
 .auth-note {
   font-size: 0.8rem;

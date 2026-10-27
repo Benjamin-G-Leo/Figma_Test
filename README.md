@@ -31,6 +31,8 @@ Volt Runner is a fast-paced futuristic arcade game built for modern desktop and 
 - Sound toggle with persisted preference
 - Responsive canvas sizing for phones, tablets, and desktop browsers
 - Reduced-motion support through `prefers-reduced-motion`
+- Optional accounts (Supabase), a public leaderboard, and guest mode
+- Works offline once loaded, and can be installed to a phone home screen
 
 ## Controls
 
@@ -65,12 +67,28 @@ src/
 ├── Orb.ts                 # Collectible orb movement and rendering
 ├── ParticleSystem.ts      # Collection and collision particles
 ├── Player.ts              # Player movement, bounds, trail, and rendering
+├── auth.ts                # Supabase sign up / log in, cloud score, offline score queue
+├── ScoreStore.ts          # Guest high score (localStorage)
 ├── types.ts               # Shared TypeScript types
-├── index.html             # Application markup
-├── main.ts                # Application bootstrap and screen navigation
+├── index.html             # Application markup (all screens)
+├── main.ts                # Application bootstrap, screens, accounts, leaderboard, offline badge
+├── fonts/                 # Bundled fonts (so the game works offline)
+├── public/                # Web app manifest and icons, copied as-is
 └── styles/
     └── style.css          # Responsive visual design and animations
+supabase/schema.sql         # Database setup (tables, rules, score-checking functions)
+service-worker.template.js  # Becomes dist/sw.js at build time (offline support)
+vercel.json                 # Security headers for the hosted site
+.github/workflows/          # Keeps the free Supabase project from pausing
 ```
+
+## Accounts and leaderboard (optional)
+
+Accounts need a Supabase project: copy `.env.example` to `.env.local`, fill in the project URL and publishable key, and run `supabase/schema.sql` once in the Supabase SQL editor. Without these the game still works as guest-only. Scores are checked on the server (see `CLAUDE.md` for the details).
+
+## Offline play
+
+After one visit the game works with no internet and can be installed to a home screen. Guests keep their score on the device. Logged-in players can also play offline: a new best score waits on the device and is sent when the connection returns (the server checks it against the time since it last heard from the player). Offline mode is only active in the built site, not under `npm run dev`.
 
 ## Requirements
 
@@ -133,8 +151,9 @@ The game canvas automatically matches the current viewport dimensions and update
 
 The game stores the following preferences locally in the browser:
 
-- `voltRunnerHighScore`
+- `voltRunnerHighScore` (guest best score)
 - `voltRunnerAudio`
+- `voltRunnerPending:<userId>` and `voltRunnerCloudBest:<userId>` (logged-in players: a score waiting to be sent, and the last best the server reported)
 
 Existing high scores saved under the previous game name are read as a fallback for compatibility.
 

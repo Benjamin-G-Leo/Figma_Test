@@ -15,6 +15,7 @@ import {
 } from './auth';
 import { localScoreStore } from './ScoreStore';
 import { ScoreStore } from './types';
+import type { SyncEvent } from './auth';
 
 // Game configuration
 const config = {
@@ -55,6 +56,8 @@ class NeonRush {
 
     // Login screen or menu, depending on session
     void this.initAccount();
+
+    this.registerServiceWorker();
   }
 
   private resizeGameCanvas(): void {
@@ -100,9 +103,18 @@ class NeonRush {
     const soundIcon = soundToggle?.querySelector('.icon');
     if (soundIcon) soundIcon.textContent = audioEnabled ? '🔊' : '🔇';
 
+    // Offline play: show a badge, and send any waiting score when the network is back
+    window.addEventListener('online', () => {
+      this.scoreStore.sync?.();
+      this.refreshNetworkBadge();
+    });
+    window.addEventListener('offline', () => this.refreshNetworkBadge());
+    this.refreshNetworkBadge();
+
     // Auto-pause when the player leaves the tab or window
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pauseGame();
+      else this.scoreStore.sync?.();
     });
     window.addEventListener('blur', () => this.pauseGame());
 
@@ -242,6 +254,43 @@ class NeonRush {
     if (menuHighScore) menuHighScore.textContent = this.scoreStore.load().toString();
   }
 
+  // ===== Offline =====
+
+  private networkFlashTimer = 0;
+
+  // Small pill in the corner: offline, syncing, or a short "synced" note.
+  private refreshNetworkBadge(flash?: string): void {
+    const badge = document.getElementById('net-badge');
+    if (!badge) return;
+
+    let text = '';
+    if (flash) text = flash;
+    else if (!navigator.onLine) text = this.account ? 'OFFLINE · SCORES SYNC LATER' : 'OFFLINE · PLAYING ON THIS DEVICE';
+    else if (this.scoreStore.hasPending?.()) text = 'SENDING YOUR SCORE...';
+
+    badge.textContent = text;
+    badge.hidden = !text;
+  }
+
+  private handleSyncEvent(event: SyncEvent): void {
+    window.clearTimeout(this.networkFlashTimer);
+    if (event === 'pending') {
+      this.refreshNetworkBadge();
+    } else {
+      this.refreshNetworkBadge(event === 'synced' ? 'SCORE SAVED ✓' : 'SCORE NOT ACCEPTED');
+      this.networkFlashTimer = window.setTimeout(() => this.refreshNetworkBadge(), 3500);
+    }
+    this.updateMenuHighScore();
+  }
+
+  private registerServiceWorker(): void {
+    // Only in the built site (the dev server has no service worker file).
+    if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('Offline mode unavailable:', error));
+    });
+  }
+
   // ===== Accounts =====
 
   private async initAccount(): Promise<void> {
@@ -283,8 +332,9 @@ class NeonRush {
   private async useAccount(account: Account): Promise<void> {
     const best = await fetchCloudScore(account);
     this.account = account;
-    this.scoreStore = createCloudScoreStore(best);
+    this.scoreStore = createCloudScoreStore(account, best, (event) => this.handleSyncEvent(event));
     this.refreshAccountUI();
+    this.scoreStore.sync?.(); // send a score that was waiting for a connection
   }
 
   private useGuest(): void {
@@ -302,6 +352,7 @@ class NeonRush {
     if (name) name.textContent = this.account ? this.account.username.toUpperCase() : 'GUEST';
     if (button) button.textContent = this.account ? 'LOG OUT' : 'LOG IN';
     this.updateMenuHighScore();
+    this.refreshNetworkBadge();
   }
 
   private setupAuthUI(): void {
@@ -362,7 +413,9 @@ class NeonRush {
     const { rows, failed } = await fetchLeaderboard(10);
     if (request !== this.leaderboardRequest) return; // closed or reopened meanwhile
     if (failed) {
-      status.textContent = 'Could not load the leaderboard.';
+      status.textContent = navigator.onLine
+        ? 'Could not load the leaderboard.'
+        : 'You are offline. The leaderboard needs internet.';
       return;
     }
 
@@ -392,6 +445,8 @@ class NeonRush {
       status.textContent = 'No scores yet. Be the first!';
     } else if (!this.account) {
       status.textContent = 'Log in to put your score on the board.';
+    } else if (this.scoreStore.hasPending?.()) {
+      status.textContent = `Your new best (${best.toLocaleString()}) is waiting to be sent.`;
     } else if (onBoard) {
       status.textContent = '';
     } else if (best <= 0) {

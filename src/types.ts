@@ -25,6 +25,10 @@ export interface ScoreStore {
   startRun?(): void;
   // Resolves once every pending save has finished (so the leaderboard is current).
   flush?(): Promise<void>;
+  // Account stores can hold a score that is waiting for a connection.
+  hasPending?(): boolean;
+  // Try to send any waiting score now (call when the network comes back).
+  sync?(): void;
 }
 
 export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
