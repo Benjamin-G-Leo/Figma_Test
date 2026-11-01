@@ -27,7 +27,7 @@ The built site works offline and can be installed to a phone home screen. `vite.
 
 ## Mobile joystick
 
-On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an on-screen stick that appears under the thumb wherever it touches (the zone is the whole screen, Pause sits above it) so a finger never covers the runner; `Game` reads `joystick.getVector()` (analog speed, dead zone 0.12, full speed at 0.85 of the ring) and ignores canvas *touch* pointers while it is on (mouse still steers by pointing). `?joystick` forces it on and `?joystick=off` forces it off (to try it on a desktop). A short hint fades out at the start of each run. The joystick lives inside `#hud`, so it only shows during play.
+On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an on-screen stick that appears under the thumb wherever it touches (the zone is the whole screen, Pause sits above it) so a finger never covers the runner; `Game` reads `joystick.getVector()` (analog speed, dead zone 0.08, full speed at 0.9 of the travel, where travel is 65% of the ring radius; the stick follows a thumb dragged past the ring so turning back is instant) and ignores canvas *touch* pointers while it is on (mouse still steers by pointing). `?joystick` forces it on and `?joystick=off` forces it off (to try it on a desktop). A short hint fades out at the start of each run. The joystick lives inside `#hud`, so it only shows during play.
 
 ## Privacy policy, terms and account deletion
 

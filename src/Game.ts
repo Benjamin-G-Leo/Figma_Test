@@ -8,8 +8,8 @@ import { localScoreStore } from './ScoreStore';
 import type { Joystick } from './Joystick';
 
 // Joystick feel: ignore tiny wobbles, reach full speed a little before the ring's edge.
-const JOYSTICK_DEADZONE = 0.12;
-const JOYSTICK_FULL_SPEED = 0.85;
+const JOYSTICK_DEADZONE = 0.08;
+const JOYSTICK_FULL_SPEED = 0.9;
 
 export class Game {
   private canvas: HTMLCanvasElement;

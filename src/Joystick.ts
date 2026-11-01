@@ -3,6 +3,9 @@ export interface StickVector {
   y: number;
 }
 
+// A full push needs only this share of the ring's radius, so little thumb travel is needed.
+const TRAVEL = 0.65;
+
 // On-screen joystick for phones and tablets, so a thumb never covers the runner.
 // Touch anywhere on the screen: the stick appears under the thumb and the runner moves
 // the way you push, faster the further you push. Left- and right-handed players both
@@ -100,13 +103,28 @@ export class Joystick {
 
   private update(e: PointerEvent): void {
     const rect = this.zone.getBoundingClientRect();
-    const r = this.radius;
-    const dx = e.clientX - (rect.left + this.origin.x);
-    const dy = e.clientY - (rect.top + this.origin.y);
+    const r = this.radius * TRAVEL; // a push this far counts as full
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    let dx = px - this.origin.x;
+    let dy = py - this.origin.y;
     const distance = Math.hypot(dx, dy);
-    const reach = Math.min(distance, r);
-    const ux = distance > 0 ? dx / distance : 0;
-    const uy = distance > 0 ? dy / distance : 0;
+
+    // Thumb dragged past the ring: the stick follows it, so turning back is instant
+    // instead of having to travel all the way back across the ring first.
+    if (distance > r) {
+      const pull = (distance - r) / distance;
+      this.origin.x += dx * pull;
+      this.origin.y += dy * pull;
+      this.placeBase(this.origin.x, this.origin.y);
+      dx = px - this.origin.x;
+      dy = py - this.origin.y;
+    }
+
+    const reach = Math.min(Math.hypot(dx, dy), r);
+    const len = Math.hypot(dx, dy);
+    const ux = len > 0 ? dx / len : 0;
+    const uy = len > 0 ? dy / len : 0;
     this.vector = { x: ux * (reach / r), y: uy * (reach / r) };
     this.knob.style.transform = `translate(${ux * reach}px, ${uy * reach}px)`;
   }
