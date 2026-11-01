@@ -52,12 +52,12 @@
           </label>
           <label class="auth-check" id="field-consent" hidden>
             <input id="auth-consent" type="checkbox">
-            <span>I am at least 13 years old and agree to the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+            <span>I am at least 13 years old and agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
           </label>
           <p id="auth-message" class="auth-message" role="alert"></p>
           <button id="auth-submit" type="submit" class="btn btn-primary btn-lg">LOG IN</button>
         </form>
-        <p class="auth-note">Your email is only used to log in. Your username and best score show on the public leaderboard. <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></p>
+        <p class="auth-note">Your email is only used to log in. Your username and best score show on the public leaderboard. <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="/terms.html" target="_blank" rel="noopener">Terms</a></p>
         <button type="button" id="guest-btn" class="btn btn-secondary">PLAY AS GUEST</button>
       </div>
     </div>
@@ -116,6 +116,7 @@
 
         <div class="legal-links">
           <a class="legal-link" href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
+          <a class="legal-link" href="/terms.html" target="_blank" rel="noopener">Terms of Service</a>
           <button type="button" id="delete-account-btn" class="legal-link" hidden>Delete my account</button>
         </div>
       </div>
@@ -159,6 +160,7 @@
       <!-- On-screen joystick (phones and tablets only; main.ts reveals it) -->
       <div id="joystick" class="joystick" aria-hidden="true" hidden>
         <div class="joystick-base"><div class="joystick-knob"></div></div>
+        <p class="joystick-hint">TOUCH ANYWHERE AND DRAG TO STEER</p>
       </div>
     </div>
 
@@ -175,7 +177,6 @@
         <div class="overlay-actions">
           <button id="resume-btn" class="btn btn-primary btn-lg">RESUME</button>
           <button id="restart-from-pause-btn" class="btn btn-secondary btn-lg">RESTART</button>
-          <button id="joystick-side-btn" class="btn btn-secondary btn-lg" hidden>JOYSTICK: LEFT</button>
         </div>
       </div>
     </div>

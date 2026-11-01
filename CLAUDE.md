@@ -27,9 +27,11 @@ The built site works offline and can be installed to a phone home screen. `vite.
 
 ## Mobile joystick
 
-On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an on-screen stick in a bottom corner zone (the stick appears under the thumb) so a finger never covers the runner; `Game` reads `joystick.getVector()` (analog speed, dead zone 0.12, full speed at 0.85 of the ring) and ignores canvas *touch* pointers while it is on (mouse still steers by pointing). `?joystick` forces it on and `?joystick=off` forces it off (to try it on a desktop). Left/right side is a button in the pause menu, saved as `voltRunnerJoystickSide`. The joystick lives inside `#hud`, so it only shows during play.
+On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an on-screen stick that appears under the thumb wherever it touches (the zone is the whole screen, Pause sits above it) so a finger never covers the runner; `Game` reads `joystick.getVector()` (analog speed, dead zone 0.12, full speed at 0.85 of the ring) and ignores canvas *touch* pointers while it is on (mouse still steers by pointing). `?joystick` forces it on and `?joystick=off` forces it off (to try it on a desktop). A short hint fades out at the start of each run. The joystick lives inside `#hud`, so it only shows during play.
 
-## Privacy policy and account deletion
+## Privacy policy, terms and account deletion
+
+`src/terms.html` is the Terms of Service (same look, linked from the login card, sign-up checkbox, main menu and the policy footer); keep it in step with the policy and the build input / links if renamed.
 
 `src/privacy.html` (+ `styles/legal.css`) is a second page in the build, linked from the login card, the sign-up checkbox and the main menu. It names the operator and a public contact email and describes exactly what is collected. **Keep it true:** if you add analytics, ads, a new tracker, a new service, or store new personal data, update the policy and bump `PRIVACY_POLICY_DATE` in `auth.ts` (also change the "Effective" dates in the page). Sign-up requires a checkbox (13+ and agree to the policy) and saves `privacy_accepted` (the date) in the account's metadata. Players delete their own account from the main menu: RPC `delete_my_account()` removes the auth user, and scores, runs and player_sync cascade. If you rename or remove `/privacy.html`, update the links and `PUBLIC_FILES`/the build input in `vite.config.js`.
 
@@ -41,7 +43,7 @@ On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an
 - `Game.ts` — main loop, game state, scoring, combos, the score-goal system, difficulty ramp, collisions, HUD updates.
 - `Player.ts`, `Orb.ts`, `Obstacle.ts` — entities, each owning its movement and rendering.
 - `ParticleSystem.ts`, `BackgroundRenderer.ts`, `AudioManager.ts` (Web Audio sounds generated in code, no audio files).
-- `Joystick.ts` — on-screen joystick for touch devices. `privacy.html` — the privacy policy page.
+- `Joystick.ts` — on-screen joystick for touch devices. `privacy.html` / `terms.html` — the privacy policy and terms of service pages.
 - `auth.ts` — Supabase client, sign up / log in / log out, cloud high score. `ScoreStore.ts` — guest high score in localStorage. `Game` takes a `ScoreStore`, so it doesn't know whether the score is local or cloud.
 - `service-worker.template.js` (project root) — source of `dist/sw.js`, see Offline play. `src/public/` — manifest + icons. `src/fonts/` — bundled fonts.
 - `types.ts` — shared types. `styles/style.css` — all UI styling and animations.
@@ -52,7 +54,7 @@ On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an
 - **Pause freezes everything** — gameplay, particles, obstacles and background. Pause/resume state lives in `main.ts`.
 - **Performance:** entity and particle counts are deliberately capped with short lifetimes (recent commits tuned this for mobile). Keep caps when adding effects.
 - **Responsive canvas** matches the viewport and resizes on rotate; entity sizes scale on mobile. Honour `prefers-reduced-motion`.
-- localStorage keys: `voltRunnerHighScore` (falls back to legacy `neonRushHighScore`) and `voltRunnerAudio`. Don't rename them, or players lose saved data. `voltRunnerJoystickSide` is the joystick side. Signed-in players' scores live in Supabase, not in these keys (only the offline-waiting and cached-best keys above).
+- localStorage keys: `voltRunnerHighScore` (falls back to legacy `neonRushHighScore`) and `voltRunnerAudio`. Don't rename them, or players lose saved data. Signed-in players' scores live in Supabase, not in these keys (only the offline-waiting and cached-best keys above).
 
 ## Git hygiene
 

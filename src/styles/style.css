@@ -379,6 +379,8 @@ html, body {
 }
 
 .hud-bottom {
+  position: relative;
+  z-index: 2; /* above the full-screen joystick layer, so Pause stays tappable */
   display: flex;
   justify-content: flex-end;
   margin-top: auto;
@@ -919,10 +921,7 @@ html, body {
 /* ===== ON-SCREEN JOYSTICK (phones and tablets) ===== */
 .joystick {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 40%;
-  height: 58%;
+  inset: 0;
   --stick: clamp(96px, 30vw, 140px);
   pointer-events: auto;
   touch-action: none;
@@ -931,7 +930,6 @@ html, body {
   -webkit-touch-callout: none;
 }
 
-.joystick.right { left: auto; right: 0; }
 .joystick[hidden] { display: none; }
 
 .joystick-base {
@@ -944,13 +942,30 @@ html, body {
   border: 2px solid rgba(0, 255, 255, 0.45);
   background: radial-gradient(circle, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.07));
   box-shadow: 0 0 18px rgba(0, 255, 255, 0.25), inset 0 0 20px rgba(0, 255, 255, 0.12);
-  opacity: 0.5;
+  opacity: 0;
   transition: opacity 0.15s ease;
   pointer-events: none;
   will-change: transform;
 }
 
 .joystick.active .joystick-base { opacity: 1; }
+
+/* A short reminder at the start of each run, then it fades away. */
+.joystick-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18%;
+  margin: 0;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  animation: joystick-hint 4s ease forwards;
+}
+@keyframes joystick-hint { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 
 .joystick-knob {
   position: absolute;

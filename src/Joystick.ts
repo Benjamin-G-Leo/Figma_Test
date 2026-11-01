@@ -3,20 +3,16 @@ export interface StickVector {
   y: number;
 }
 
-export type StickSide = 'left' | 'right';
-
-const SIDE_KEY = 'voltRunnerJoystickSide';
-
 // On-screen joystick for phones and tablets, so a thumb never covers the runner.
-// Touch anywhere in the corner zone: the stick appears under the thumb and the runner
-// moves the way you push, faster the further you push.
+// Touch anywhere on the screen: the stick appears under the thumb and the runner moves
+// the way you push, faster the further you push. Left- and right-handed players both
+// just put their thumb where it suits them.
 export class Joystick {
   private readonly base: HTMLElement;
   private readonly knob: HTMLElement;
   private pointerId: number | null = null;
   private origin = { x: 0, y: 0 }; // stick centre, in zone coordinates
   private vector: StickVector = { x: 0, y: 0 };
-  private side: StickSide;
 
   // Phones and tablets get it by default. `?joystick` forces it on and `?joystick=off`
   // forces it off (handy for trying it on a desktop).
@@ -29,39 +25,12 @@ export class Joystick {
   constructor(private readonly zone: HTMLElement) {
     this.base = zone.querySelector('.joystick-base') as HTMLElement;
     this.knob = zone.querySelector('.joystick-knob') as HTMLElement;
-    this.side = Joystick.loadSide();
-    zone.classList.toggle('right', this.side === 'right');
 
     zone.addEventListener('pointerdown', (e) => this.onDown(e));
     zone.addEventListener('pointermove', (e) => this.onMove(e));
     zone.addEventListener('pointerup', (e) => this.onEnd(e));
     zone.addEventListener('pointercancel', (e) => this.onEnd(e));
     zone.addEventListener('lostpointercapture', (e) => this.onEnd(e));
-    window.addEventListener('resize', () => this.showAtRest());
-    this.showAtRest();
-  }
-
-  private static loadSide(): StickSide {
-    try {
-      return localStorage.getItem(SIDE_KEY) === 'right' ? 'right' : 'left';
-    } catch {
-      return 'left';
-    }
-  }
-
-  getSide(): StickSide {
-    return this.side;
-  }
-
-  setSide(side: StickSide): void {
-    this.side = side;
-    this.zone.classList.toggle('right', side === 'right');
-    try {
-      localStorage.setItem(SIDE_KEY, side);
-    } catch {
-      // Storage blocked: the choice just won't be remembered.
-    }
-    this.release();
   }
 
   // Current push, or null when the thumb is off the stick. Each part is -1..1 and the
@@ -72,7 +41,7 @@ export class Joystick {
       : null;
   }
 
-  // Let go (used when the game pauses, the tab hides, or the side changes).
+  // Let go (used when the game pauses or the tab hides).
   release(): void {
     if (this.pointerId !== null) {
       try {
@@ -85,7 +54,6 @@ export class Joystick {
     this.vector = { x: 0, y: 0 };
     this.zone.classList.remove('active');
     this.knob.style.transform = '';
-    this.showAtRest();
   }
 
   private get radius(): number {
@@ -95,14 +63,6 @@ export class Joystick {
   private placeBase(x: number, y: number): void {
     const r = this.radius;
     this.base.style.transform = `translate(${x - r}px, ${y - r}px)`;
-  }
-
-  // Idle: a faint ring in the corner so players can see where to put their thumb.
-  private showAtRest(): void {
-    if (this.pointerId !== null) return;
-    const rect = this.zone.getBoundingClientRect();
-    const r = this.radius;
-    this.placeBase(rect.width / 2, Math.max(r, rect.height - r - 24));
   }
 
   private onDown(e: PointerEvent): void {
@@ -115,7 +75,7 @@ export class Joystick {
       // Some browsers refuse; the zone still gets the events while the thumb is on it.
     }
 
-    // The stick appears right under the thumb (kept inside the zone).
+    // The stick appears right under the thumb (kept inside the screen).
     const rect = this.zone.getBoundingClientRect();
     const r = this.radius;
     this.origin = {

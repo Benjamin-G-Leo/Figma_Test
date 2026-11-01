@@ -72,20 +72,7 @@ class NeonRush {
 
     zone.hidden = false;
     document.body.classList.add('has-joystick');
-    const joystick = new Joystick(zone);
-    this.joystick = joystick;
-
-    // Left- and right-handed players: a switch in the pause menu.
-    const sideButton = document.getElementById('joystick-side-btn');
-    if (sideButton) {
-      const label = () => (sideButton.textContent = `JOYSTICK: ${joystick.getSide().toUpperCase()}`);
-      sideButton.hidden = false;
-      label();
-      sideButton.addEventListener('click', () => {
-        joystick.setSide(joystick.getSide() === 'left' ? 'right' : 'left');
-        label();
-      });
-    }
+    this.joystick = new Joystick(zone);
   }
 
   private resizeGameCanvas(): void {
@@ -610,7 +597,7 @@ class NeonRush {
     }
 
     if (signup && !(document.getElementById('auth-consent') as HTMLInputElement).checked) {
-      this.setAuthMessage('Please confirm you are 13 or older and agree to the Privacy Policy');
+      this.setAuthMessage('Please confirm you are 13 or older and agree to the Terms and Privacy Policy');
       return;
     }
 
