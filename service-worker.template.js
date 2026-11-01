@@ -37,12 +37,16 @@ self.addEventListener('fetch', (event) => {
   if (new URL(request.url).origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
-    // The page: network first, so players get the newest version when online.
-    // Offline (or no answer in 4 seconds): the saved copy.
+    // A page: network first, so players get the newest version when online.
+    // Offline (or no answer in 4 seconds): that page's saved copy, else the game.
     const network = fetch(request).catch(() => null);
     const timeout = new Promise((resolve) => setTimeout(resolve, 4000, null));
     event.respondWith(
-      Promise.race([network, timeout]).then((response) => response || caches.match('/index.html'))
+      Promise.race([network, timeout]).then(
+        (response) =>
+          response ||
+          caches.match(request, { ignoreSearch: true }).then((saved) => saved || caches.match('/index.html'))
+      )
     );
     return;
   }

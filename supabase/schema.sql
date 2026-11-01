@@ -340,6 +340,22 @@ begin
 end;
 $$;
 
+-- "Delete my account": a player erases their own account. Removing the auth user also
+-- removes their scores, runs and player_sync rows (all of them cascade).
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
 -- ===== Who may call what =====
 
 revoke all on function
@@ -353,10 +369,12 @@ revoke all on function
   public.save_best_score(uuid, integer),
   public.start_run(),
   public.submit_score(integer),
-  public.submit_offline_score(integer, integer)
+  public.submit_offline_score(integer, integer),
+  public.delete_my_account()
 from public, anon, authenticated;
 
 grant execute on function public.username_available(text) to anon, authenticated;
 grant execute on function public.start_run() to authenticated;
 grant execute on function public.submit_score(integer) to authenticated;
 grant execute on function public.submit_offline_score(integer, integer) to authenticated;
+grant execute on function public.delete_my_account() to authenticated;

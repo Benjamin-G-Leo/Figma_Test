@@ -5,6 +5,11 @@ import { ParticleSystem } from './ParticleSystem';
 import { AudioManager } from './AudioManager';
 import { GameConfig, GameStats, GameState, ScoreStore } from './types';
 import { localScoreStore } from './ScoreStore';
+import type { Joystick } from './Joystick';
+
+// Joystick feel: ignore tiny wobbles, reach full speed a little before the ring's edge.
+const JOYSTICK_DEADZONE = 0.12;
+const JOYSTICK_FULL_SPEED = 0.85;
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -17,6 +22,7 @@ export class Game {
   private orbs: Orb[] = [];
   private particleSystem: ParticleSystem;
   private audioManager: AudioManager;
+  private joystick: Joystick | null = null;
   private touchTarget: { x: number; y: number } | null = null;
   private pointerSpeed = 0;
   private lastPointerPosition: { x: number; y: number } | null = null;
@@ -136,7 +142,14 @@ export class Game {
     this.maxOrbs = this.isCompactViewport ? 3 : 5;
   }
 
+  // With the on-screen joystick, a thumb on the screen steers through the stick, not by
+  // pointing at the runner (which hid it under the finger).
+  setJoystick(joystick: Joystick | null): void {
+    this.joystick = joystick;
+  }
+
   private handlePointerDown(e: PointerEvent): void {
+    if (this.joystick && e.pointerType === 'touch') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
     this.canvas.setPointerCapture(e.pointerId);
@@ -144,6 +157,7 @@ export class Game {
   }
 
   private handlePointerMove(e: PointerEvent): void {
+    if (this.joystick && e.pointerType === 'touch') return;
     if (e.pointerType === 'mouse' && e.buttons === 0) return;
 
     this.updateTouchTarget(e);
@@ -302,7 +316,16 @@ export class Game {
       dy /= norm;
     }
 
-    if (this.touchTarget) {
+    const stick = this.joystick?.getVector() ?? null;
+    if (stick) {
+      // Analog: a small push moves slowly (fine control), a full push moves at full speed.
+      // The last bit of the ring isn't needed for full speed, so a thumb needn't stretch.
+      const length = Math.hypot(stick.x, stick.y);
+      const power = Math.min(1, Math.max(0, (length - JOYSTICK_DEADZONE) / (JOYSTICK_FULL_SPEED - JOYSTICK_DEADZONE)));
+      dx = (stick.x / length) * power;
+      dy = (stick.y / length) * power;
+      this.player.setSpeed(this.getPlayerSpeed());
+    } else if (this.touchTarget) {
       this.pointerSpeed *= Math.pow(0.82, deltaTime);
       this.player.setSpeed(Math.max(2.5, this.getPlayerSpeed(), this.pointerSpeed));
       const targetDx = this.touchTarget.x - this.player.x;

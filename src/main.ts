@@ -4,6 +4,7 @@ import {
   Account,
   authEnabled,
   createCloudScoreStore,
+  deleteAccount,
   fetchLeaderboard,
   fetchRank,
   getAccount,
@@ -14,6 +15,7 @@ import {
   signUp
 } from './auth';
 import { localScoreStore } from './ScoreStore';
+import { Joystick } from './Joystick';
 import { ScoreStore } from './types';
 import type { SyncEvent } from './auth';
 
@@ -38,6 +40,7 @@ class NeonRush {
   private scoreStore: ScoreStore = localScoreStore;
   private authMode: 'login' | 'signup' = 'login';
   private leaderboardRequest = 0;
+  private joystick: Joystick | null = null;
 
   constructor() {
     this.bgRenderer = new BackgroundRenderer();
@@ -57,7 +60,32 @@ class NeonRush {
     // Login screen or menu, depending on session
     void this.initAccount();
 
+    this.setupJoystick();
     this.registerServiceWorker();
+  }
+
+  // Phones and tablets steer with an on-screen joystick (the finger no longer hides the runner).
+  private setupJoystick(): void {
+    if (!Joystick.wanted()) return;
+    const zone = document.getElementById('joystick');
+    if (!zone) return;
+
+    zone.hidden = false;
+    document.body.classList.add('has-joystick');
+    const joystick = new Joystick(zone);
+    this.joystick = joystick;
+
+    // Left- and right-handed players: a switch in the pause menu.
+    const sideButton = document.getElementById('joystick-side-btn');
+    if (sideButton) {
+      const label = () => (sideButton.textContent = `JOYSTICK: ${joystick.getSide().toUpperCase()}`);
+      sideButton.hidden = false;
+      label();
+      sideButton.addEventListener('click', () => {
+        joystick.setSide(joystick.getSide() === 'left' ? 'right' : 'left');
+        label();
+      });
+    }
   }
 
   private resizeGameCanvas(): void {
@@ -113,10 +141,15 @@ class NeonRush {
 
     // Auto-pause when the player leaves the tab or window
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.pauseGame();
-      else this.scoreStore.sync?.();
+      if (document.hidden) {
+        this.joystick?.release();
+        this.pauseGame();
+      } else this.scoreStore.sync?.();
     });
-    window.addEventListener('blur', () => this.pauseGame());
+    window.addEventListener('blur', () => {
+      this.joystick?.release();
+      this.pauseGame();
+    });
 
     // Keyboard pause
     window.addEventListener('keydown', (e) => {
@@ -159,6 +192,7 @@ class NeonRush {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     if (!this.game) {
       this.game = new Game(canvas, config, this.scoreStore);
+      this.game.setJoystick(this.joystick);
     }
     
     // Start game
@@ -358,6 +392,8 @@ class NeonRush {
     document.querySelectorAll<HTMLElement>('.js-open-leaderboard').forEach((b) => (b.hidden = !authEnabled));
     if (name) name.textContent = this.account ? this.account.username.toUpperCase() : 'GUEST';
     if (button) button.textContent = this.account ? 'LOG OUT' : 'LOG IN';
+    const deleteButton = document.getElementById('delete-account-btn');
+    if (deleteButton) deleteButton.hidden = !this.account;
     this.updateMenuHighScore();
     this.refreshNetworkBadge();
   }
@@ -379,6 +415,15 @@ class NeonRush {
       button.addEventListener('click', () => void this.openLeaderboard())
     );
     byId('lb-close-btn')?.addEventListener('click', () => this.closeLeaderboard());
+
+    // Delete my account (type DELETE to confirm)
+    byId('delete-account-btn')?.addEventListener('click', () => this.openDeleteDialog());
+    byId('delete-cancel-btn')?.addEventListener('click', () => this.closeDeleteDialog());
+    byId('delete-go-btn')?.addEventListener('click', () => void this.confirmDelete());
+    byId('delete-confirm')?.addEventListener('input', () => {
+      const typed = (byId('delete-confirm') as HTMLInputElement).value.trim().toUpperCase();
+      (byId('delete-go-btn') as HTMLButtonElement).disabled = typed !== 'DELETE';
+    });
     // Session ended (expired / revoked): fall back to guest so the UI doesn't lie
     onSignedOut(() => {
       if (!this.account) return;
@@ -386,7 +431,10 @@ class NeonRush {
       this.rememberGuest(true);
     });
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Escape') this.closeLeaderboard();
+      if (e.code === 'Escape') {
+        this.closeLeaderboard();
+        this.closeDeleteDialog();
+      }
     });
 
     byId('account-btn')?.addEventListener('click', async () => {
@@ -471,6 +519,50 @@ class NeonRush {
     document.getElementById('leaderboard-overlay')?.classList.add('hidden');
   }
 
+  private openDeleteDialog(): void {
+    if (!this.account) return;
+    const input = document.getElementById('delete-confirm') as HTMLInputElement | null;
+    const go = document.getElementById('delete-go-btn') as HTMLButtonElement | null;
+    if (input) input.value = '';
+    if (go) go.disabled = true;
+    this.setDeleteMessage('');
+    document.getElementById('delete-overlay')?.classList.remove('hidden');
+    input?.focus();
+  }
+
+  private closeDeleteDialog(): void {
+    document.getElementById('delete-overlay')?.classList.add('hidden');
+  }
+
+  private setDeleteMessage(text: string): void {
+    const message = document.getElementById('delete-message');
+    if (message) message.textContent = text;
+  }
+
+  private async confirmDelete(): Promise<void> {
+    const account = this.account;
+    const input = document.getElementById('delete-confirm') as HTMLInputElement | null;
+    const go = document.getElementById('delete-go-btn') as HTMLButtonElement | null;
+    if (!account || !input || !go || input.value.trim().toUpperCase() !== 'DELETE') return;
+
+    go.disabled = true;
+    this.setDeleteMessage('Deleting...');
+    const result = await deleteAccount(account);
+    if (!result.ok) {
+      this.setDeleteMessage(result.error);
+      go.disabled = false;
+      return;
+    }
+
+    // Back to guest, with a short confirmation.
+    this.useGuest();
+    this.rememberGuest(true);
+    this.closeDeleteDialog();
+    window.clearTimeout(this.networkFlashTimer);
+    this.refreshNetworkBadge('ACCOUNT DELETED');
+    this.networkFlashTimer = window.setTimeout(() => this.refreshNetworkBadge(), 4000);
+  }
+
   private setAuthMode(mode: 'login' | 'signup'): void {
     this.authMode = mode;
     const signup = mode === 'signup';
@@ -482,6 +574,8 @@ class NeonRush {
     document.getElementById('tab-signup')?.setAttribute('aria-selected', String(signup));
     const submit = document.getElementById('auth-submit');
     if (submit) submit.textContent = signup ? 'CREATE ACCOUNT' : 'LOG IN';
+    const consent = document.getElementById('field-consent');
+    if (consent) consent.hidden = !signup;
     const password = document.getElementById('auth-password') as HTMLInputElement | null;
     if (password) password.autocomplete = signup ? 'new-password' : 'current-password';
     this.setAuthMessage('');
@@ -512,6 +606,11 @@ class NeonRush {
     }
     if (password.length < 8) {
       this.setAuthMessage('Password needs at least 8 characters');
+      return;
+    }
+
+    if (signup && !(document.getElementById('auth-consent') as HTMLInputElement).checked) {
+      this.setAuthMessage('Please confirm you are 13 or older and agree to the Privacy Policy');
       return;
     }
 

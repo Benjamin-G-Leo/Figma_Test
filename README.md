@@ -33,6 +33,8 @@ Volt Runner is a fast-paced futuristic arcade game built for modern desktop and 
 - Reduced-motion support through `prefers-reduced-motion`
 - Optional accounts (Supabase), a public leaderboard, and guest mode
 - Works offline once loaded, and can be installed to a phone home screen
+- On-screen joystick on phones and tablets (the finger never covers the runner); left or right side in the pause menu
+- Privacy policy page, a sign-up consent checkbox, and a self-service "Delete my account"
 
 ## Controls
 
@@ -41,7 +43,8 @@ Volt Runner is a fast-paced futuristic arcade game built for modern desktop and 
 | `W`, `A`, `S`, `D` | Move the player |
 | Arrow keys | Move the player |
 | `Space` | Pause or resume |
-| Touch and drag | Move on mobile devices |
+| Touch (phones, tablets) | Joystick: touch the bottom corner and push in the direction to move |
+| Mouse drag | Move toward the pointer (desktop) |
 
 ## Gameplay
 
@@ -67,7 +70,9 @@ src/
 ├── Orb.ts                 # Collectible orb movement and rendering
 ├── ParticleSystem.ts      # Collection and collision particles
 ├── Player.ts              # Player movement, bounds, trail, and rendering
-├── auth.ts                # Supabase sign up / log in, cloud score, offline score queue
+├── Joystick.ts            # On-screen joystick for touch devices
+├── privacy.html           # Privacy policy page (update it if data handling changes)
+├── auth.ts                # Supabase sign up / log in, cloud score, offline score queue, account deletion
 ├── ScoreStore.ts          # Guest high score (localStorage)
 ├── types.ts               # Shared TypeScript types
 ├── index.html             # Application markup (all screens)
@@ -153,6 +158,7 @@ The game stores the following preferences locally in the browser:
 
 - `voltRunnerHighScore` (guest best score)
 - `voltRunnerAudio`
+- `voltRunnerJoystickSide` (touch devices: `left` or `right`)
 - `voltRunnerPending:<userId>` and `voltRunnerCloudBest:<userId>` (logged-in players: a score waiting to be sent, and the last best the server reported)
 
 Existing high scores saved under the previous game name are read as a fallback for compatibility.

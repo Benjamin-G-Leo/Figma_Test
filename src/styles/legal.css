@@ -1,0 +1,138 @@
+/* Plain, readable styling for the privacy policy page (the game's own stylesheet locks
+   scrolling, so this page has its own). Fonts are the bundled ones. */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('../fonts/orbitron-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/rajdhani-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/rajdhani-600.woff2') format('woff2');
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0c0118 0%, #14002a 50%, #0c0118 100%);
+  color: #e6defa;
+  font-family: 'Rajdhani', system-ui, sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.legal {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: #00ffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+.back:hover, .legal a:hover { text-decoration: underline; }
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, #00ffff, #ff00ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+h2 {
+  margin: 2.2rem 0 0.5rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: #00ffff;
+}
+
+p, ul { margin: 0.5rem 0; }
+ul { padding-left: 1.3rem; }
+li { margin: 0.3rem 0; }
+a { color: #00ffff; }
+strong { color: #ffffff; }
+
+.meta { color: rgba(230, 222, 250, 0.6); margin-bottom: 1.5rem; }
+
+.summary {
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 0.75rem;
+  background: rgba(0, 255, 255, 0.05);
+}
+.summary h2 { margin-top: 0; }
+
+.table-wrap { overflow-x: auto; margin: 0.75rem 0; }
+table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 1.02rem;
+}
+th, td {
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+th {
+  color: #ff7bff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+code {
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.3rem;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.92em;
+}
+
+footer { margin-top: 3rem; color: rgba(230, 222, 250, 0.55); font-size: 1rem; }
+
+/* Narrow screens: show each table row as a small card instead of scrolling sideways */
+@media (max-width: 640px) {
+  .table-wrap { overflow: visible; }
+  table, thead, tbody, tr, th, td { display: block; min-width: 0; width: 100%; }
+  thead { position: absolute; left: -9999px; }
+  tr {
+    margin-bottom: 0.9rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0.6rem;
+    background: rgba(255, 255, 255, 0.04);
+  }
+  td { padding: 0.35rem 0; border: 0; }
+  td::before {
+    content: attr(data-label);
+    display: block;
+    color: #ff7bff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+}

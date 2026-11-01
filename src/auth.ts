@@ -8,6 +8,10 @@ const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 export const authEnabled = Boolean(url && key);
 const client: SupabaseClient | null = authEnabled ? createClient(url!, key!) : null;
 
+// Date of the privacy policy the sign-up checkbox points to (src/privacy.html). Change it
+// whenever the policy changes in a way players should agree to again.
+export const PRIVACY_POLICY_DATE = '2026-11-01';
+
 export interface Account {
   id: string;
   username: string;
@@ -113,7 +117,8 @@ export async function signUp(username: string, email: string, password: string):
   if (available !== true) return { ok: false, error: 'That username is taken or not allowed.' };
 
   const response = await withTimeout(
-    client.auth.signUp({ email, password, options: { data: { username } } }),
+    // privacy_accepted records which version of the policy the player agreed to.
+    client.auth.signUp({ email, password, options: { data: { username, privacy_accepted: PRIVACY_POLICY_DATE } } }),
     15000
   );
   if (response === TIMED_OUT) return { ok: false, error: SLOW_MESSAGE };
@@ -238,6 +243,30 @@ export async function fetchRank(score: number): Promise<number | null> {
     console.warn('Could not load rank:', error);
     return null;
   }
+}
+
+// Permanently erases the signed-in player's account on the server (the database function
+// also removes their score and run records), then clears what this device kept for them.
+export async function deleteAccount(account: Account): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!client) return { ok: false, error: 'Accounts are not set up.' };
+  if (isOffline()) return { ok: false, error: 'You need to be online to delete your account.' };
+
+  const { error } = await client.rpc('delete_my_account').abortSignal(timeoutSignal(15000));
+  if (error) {
+    return {
+      ok: false,
+      error: isNetworkError(error.message) ? SLOW_MESSAGE : 'Could not delete the account. Try again in a moment.'
+    };
+  }
+
+  writePending(account.id, null);
+  try {
+    localStorage.removeItem(cloudBestKey(account.id));
+  } catch {
+    // Storage blocked: nothing was saved there anyway.
+  }
+  await signOut(); // the login is already invalid; this just clears it from the device
+  return { ok: true };
 }
 
 // A new best that could not be sent live (no internet). It stays on this device and is

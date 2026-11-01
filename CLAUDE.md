@@ -25,6 +25,14 @@ The built site works offline and can be installed to a phone home screen. `vite.
 
 **Scores earned while logged in but offline** stay on the device (`voltRunnerPending:<userId>`, plus `voltRunnerCloudBest:<userId>` caching the last server best for the menu) and are sent later through the RPC `submit_offline_score(score, seconds)`. The server never saw those runs, so it checks that the claimed run length fits in the time since it last heard from the player (`player_sync.last_contact`, refreshed by `start_run` / `submit_score` / an accepted offline claim) plus the usual `max_plausible_score`. Accepting a claim uses that time up, so offline claims cost the same real time as a live run. **Always send a waiting score before calling `start_run`**, because starting a run refreshes the contact time (`createCloudScoreStore` does this). A refused claim (`P0001`) is dropped; the "too soon" answer (`VR001`: run longer than the time since last contact, e.g. another device just checked in) keeps the score and retries on the next trigger (reconnect, tab visible, new run, login). Every server call is cut off after 8 s (`timeoutSignal`, login 15 s, session check 4 s then trusts the saved login) so a hanging connection (captive Wi-Fi) can never freeze the queue or a screen. If the browser blocks localStorage the waiting score is kept in memory. Guests are unaffected (their score is local anyway). Safari may erase localStorage after 7 days of not visiting (installed home-screen apps are exempt), which would drop a score still waiting.
 
+## Mobile joystick
+
+On phones and tablets (`matchMedia('(pointer: coarse)')`) `Joystick.ts` shows an on-screen stick in a bottom corner zone (the stick appears under the thumb) so a finger never covers the runner; `Game` reads `joystick.getVector()` (analog speed, dead zone 0.12, full speed at 0.85 of the ring) and ignores canvas *touch* pointers while it is on (mouse still steers by pointing). `?joystick` forces it on and `?joystick=off` forces it off (to try it on a desktop). Left/right side is a button in the pause menu, saved as `voltRunnerJoystickSide`. The joystick lives inside `#hud`, so it only shows during play.
+
+## Privacy policy and account deletion
+
+`src/privacy.html` (+ `styles/legal.css`) is a second page in the build, linked from the login card, the sign-up checkbox and the main menu. It names the operator and a public contact email and describes exactly what is collected. **Keep it true:** if you add analytics, ads, a new tracker, a new service, or store new personal data, update the policy and bump `PRIVACY_POLICY_DATE` in `auth.ts` (also change the "Effective" dates in the page). Sign-up requires a checkbox (13+ and agree to the policy) and saves `privacy_accepted` (the date) in the account's metadata. Players delete their own account from the main menu: RPC `delete_my_account()` removes the auth user, and scores, runs and player_sync cascade. If you rename or remove `/privacy.html`, update the links and `PUBLIC_FILES`/the build input in `vite.config.js`.
+
 ## Structure
 
 `vite.config.js` sets `root: 'src'`, so `src/index.html` is the entry and output goes to `../dist`.
@@ -33,6 +41,7 @@ The built site works offline and can be installed to a phone home screen. `vite.
 - `Game.ts` — main loop, game state, scoring, combos, the score-goal system, difficulty ramp, collisions, HUD updates.
 - `Player.ts`, `Orb.ts`, `Obstacle.ts` — entities, each owning its movement and rendering.
 - `ParticleSystem.ts`, `BackgroundRenderer.ts`, `AudioManager.ts` (Web Audio sounds generated in code, no audio files).
+- `Joystick.ts` — on-screen joystick for touch devices. `privacy.html` — the privacy policy page.
 - `auth.ts` — Supabase client, sign up / log in / log out, cloud high score. `ScoreStore.ts` — guest high score in localStorage. `Game` takes a `ScoreStore`, so it doesn't know whether the score is local or cloud.
 - `service-worker.template.js` (project root) — source of `dist/sw.js`, see Offline play. `src/public/` — manifest + icons. `src/fonts/` — bundled fonts.
 - `types.ts` — shared types. `styles/style.css` — all UI styling and animations.
@@ -43,7 +52,7 @@ The built site works offline and can be installed to a phone home screen. `vite.
 - **Pause freezes everything** — gameplay, particles, obstacles and background. Pause/resume state lives in `main.ts`.
 - **Performance:** entity and particle counts are deliberately capped with short lifetimes (recent commits tuned this for mobile). Keep caps when adding effects.
 - **Responsive canvas** matches the viewport and resizes on rotate; entity sizes scale on mobile. Honour `prefers-reduced-motion`.
-- localStorage keys: `voltRunnerHighScore` (falls back to legacy `neonRushHighScore`) and `voltRunnerAudio`. Don't rename them, or players lose saved data. Signed-in players' scores live in Supabase, not in these keys (only the offline-waiting and cached-best keys above).
+- localStorage keys: `voltRunnerHighScore` (falls back to legacy `neonRushHighScore`) and `voltRunnerAudio`. Don't rename them, or players lose saved data. `voltRunnerJoystickSide` is the joystick side. Signed-in players' scores live in Supabase, not in these keys (only the offline-waiting and cached-best keys above).
 
 ## Git hygiene
 
